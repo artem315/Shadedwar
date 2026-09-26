@@ -122,6 +122,14 @@ dependencies {
     compileOnly latticeDevJar
     runtimeOnly latticeDevJar
     annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
+
+    // Optional local mods for the development run. Players install these separately.
+    ["Immersive Vehicles-1.20.1-25.0.0.jar", "MTS Official Pack-1.20.1-V29.jar"].each { name ->
+        def localMod = file("libs/${name}")
+        if (localMod.exists()) {
+            runtimeOnly files(localMod)
+        }
+    }
 }
 
 sourceSets {
@@ -179,4 +187,14 @@ processResources {
 
 tasks.named("build") {
     dependsOn("reobfJar")
+}
+
+task runFp5Tests(type: JavaExec) {
+    dependsOn "compileTestJava"
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "com.fullfud.fullfud.testing.Fp5TestRunner"
+}
+
+test {
+    dependsOn "runFp5Tests"
 }

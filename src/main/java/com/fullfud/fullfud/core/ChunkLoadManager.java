@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ChunkLoadManager {
     private static final TicketType<Integer> DRONE_TICKET = TicketType.create("fullfud_drone", Integer::compareTo, 40);
     private static final long STALE_THRESHOLD_MS = 5000L;
-    private static final Map<Integer, TicketData> ACTIVE_TICKETS = new ConcurrentHashMap<>();
+    private static final Map<TicketKey, TicketData> ACTIVE_TICKETS = new ConcurrentHashMap<>();
 
     private ChunkLoadManager() {
     }
@@ -22,29 +22,25 @@ public final class ChunkLoadManager {
         }
 
         final int safeRadius = Math.max(1, radius);
-        final TicketData existing = ACTIVE_TICKETS.get(entityId);
+        final ServerChunkCache chunkSource = level.getChunkSource();
+        final TicketKey key = new TicketKey(level, entityId);
+        final TicketData existing = ACTIVE_TICKETS.get(key);
         if (existing != null) {
+            existing.lastUpdate = System.currentTimeMillis();
             if (existing.level == level && existing.pos.equals(pos) && existing.radius == safeRadius) {
-                existing.lastUpdate = System.currentTimeMillis();
+                chunkSource.addRegionTicket(DRONE_TICKET, pos, safeRadius, entityId);
                 return;
             }
             removeTicket(existing.level, existing.pos, existing.radius, entityId);
         }
 
-        final ServerChunkCache chunkSource = level.getChunkSource();
         chunkSource.addRegionTicket(DRONE_TICKET, pos, safeRadius, entityId);
 
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                level.getChunk(pos.x + dx, pos.z + dz);
-            }
-        }
-
-        ACTIVE_TICKETS.put(entityId, new TicketData(level, pos, safeRadius));
+        ACTIVE_TICKETS.put(key, new TicketData(level, pos, safeRadius));
     }
 
     public static void releaseChunks(final ServerLevel level, final int entityId) {
-        final TicketData existing = ACTIVE_TICKETS.remove(entityId);
+        final TicketData existing = ACTIVE_TICKETS.remove(new TicketKey(level, entityId));
         if (existing != null) {
             removeTicket(existing.level, existing.pos, existing.radius, entityId);
         }
@@ -56,7 +52,7 @@ public final class ChunkLoadManager {
             if (data.level != level) {
                 return false;
             }
-            removeTicket(data.level, data.pos, data.radius, entry.getKey());
+            removeTicket(data.level, data.pos, data.radius, entry.getKey().entityId());
             return true;
         });
     }
@@ -68,7 +64,7 @@ public final class ChunkLoadManager {
             if (now - data.lastUpdate <= STALE_THRESHOLD_MS) {
                 return false;
             }
-            removeTicket(data.level, data.pos, data.radius, entry.getKey());
+            removeTicket(data.level, data.pos, data.radius, entry.getKey().entityId());
             return true;
         });
     }
@@ -97,4 +93,6 @@ public final class ChunkLoadManager {
             this.lastUpdate = System.currentTimeMillis();
         }
     }
+
+    private record TicketKey(ServerLevel level, int entityId) { }
 }

@@ -1,30 +1,41 @@
 package com.fullfud.fullfud.core;
 
 import com.fullfud.fullfud.common.entity.ExplosionShrapnelEntity;
+import com.fullfud.fullfud.common.entity.FpvDroneEntity;
 import com.fullfud.fullfud.common.entity.drone.DronePreset;
+import com.fullfud.fullfud.core.network.FullfudNetwork;
+import com.fullfud.fullfud.core.network.packet.DroneExplosionPacket;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.network.PacketDistributor;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class DroneExplosionEffects {
-    private static final float SBW_VEHICLE_DIRECT_IMPACT_DAMAGE = 340.0F;
+    public static final float SBW_VEHICLE_DIRECT_IMPACT_DAMAGE = 4500.0F;
     private static final float SBW_VEHICLE_EXPLOSION_DAMAGE = 80.0F;
     private static final float SBW_VEHICLE_EXPLOSION_RADIUS = 5.0F;
     private static final double SHRAPNEL_BASE_SPAWN_Y_OFFSET = 0.65D;
@@ -32,9 +43,10 @@ public final class DroneExplosionEffects {
     private static final double[] SHRAPNEL_FORWARD_SPAWN_OFFSETS = { 0.35D, 0.75D, 1.15D };
     private static final double[] SHRAPNEL_VERTICAL_SPAWN_OFFSETS = { 0.0D, 0.25D, 0.55D, 0.9D };
 
-    private static final BlastProfile FPV_PROFILE = new BlastProfile(180, 18.0F, 25.0D, 4.0F, 12.0F, 4.2F, ShrapnelPattern.HORIZONTAL_RING, 0.0F);
-    private static final BlastProfile FPV_STRIKE_PROFILE = new BlastProfile(180, 18.0F, 25.0D, 4.0F, 12.0F, 4.2F, ShrapnelPattern.FORWARD_CONE, 16.0F);
-    private static final BlastProfile SHAHED_PROFILE = new BlastProfile(400, 15.0F, 200.0D, 10.0F, 50.0F, 3.8F, ShrapnelPattern.SPHERICAL, 0.0F);
+    private static final BlastProfile FPV_PROFILE = new BlastProfile(DroneExplosionPacket.TYPE_FPV_STANDARD, 1.0F, 180, 18.0F, 25.0D, 4.0F, 12.0F, 4.2F, ShrapnelPattern.HORIZONTAL_RING, 0.0F);
+    private static final BlastProfile FPV_STRIKE_PROFILE = new BlastProfile(DroneExplosionPacket.TYPE_FPV_STRIKE, 1.15F, 180, 18.0F, 25.0D, 4.0F, 12.0F, 4.2F, ShrapnelPattern.FORWARD_CONE, 16.0F);
+    private static final BlastProfile SHAHED_PROFILE = new BlastProfile(DroneExplosionPacket.TYPE_SHAHED, 2.4F, 400, 15.0F, 200.0D, 10.0F, 50.0F, 3.8F, ShrapnelPattern.SPHERICAL, 0.0F);
+    private static final BlastProfile FLAMINGO_PROFILE = new BlastProfile(DroneExplosionPacket.TYPE_FLAMINGO, 8.0F, 1200, 42.0F, 360.0D, 32.0F, 110.0F, 4.0F, ShrapnelPattern.SPHERICAL, 0.0F);
 
     private static final float DISTANT_CLOSE_RADIUS = 24.0F;
     private static final float DISTANT_MEDIUM_RADIUS = 80.0F;
@@ -71,17 +83,55 @@ public final class DroneExplosionEffects {
         applyExplosionEffects(level, source, attacker, SHAHED_PROFILE, facingDirection);
     }
 
+    public static void afterFlamingoExplosion(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        @Nullable final Vec3 facingDirection
+    ) {
+        afterFlamingoExplosion(level, source, attacker, facingDirection, null);
+    }
+
+    public static void afterFlamingoExplosion(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        @Nullable final Vec3 facingDirection,
+        @Nullable final Vec3 explicitNormal
+    ) {
+        applyExplosionEffects(level, source, attacker, FLAMINGO_PROFILE, facingDirection, explicitNormal);
+    }
+
     public static void applyDirectImpactVehicleDamage(
         final ServerLevel level,
         final Entity source,
         @Nullable final LivingEntity attacker,
         final Entity target
     ) {
+        applyDirectImpactVehicleDamage(level, source, attacker, target, SBW_VEHICLE_DIRECT_IMPACT_DAMAGE);
+    }
+
+    public static void applyDirectImpactVehicleDamage(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        final Entity target,
+        final float damage
+    ) {
         if (!isSuperbWarfareVehicle(target)) {
             return;
         }
 
-        target.hurt(superbWarfareExplosionDamageSource(level, source, attacker), SBW_VEHICLE_DIRECT_IMPACT_DAMAGE);
+        target.hurt(superbWarfareExplosionDamageSource(level, source, attacker), damage);
+    }
+
+    public static void applyFlamingoVehicleDemolition(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        final Entity target
+    ) {
+        applyDirectImpactVehicleDamage(level, source, attacker, target, SBW_VEHICLE_DIRECT_IMPACT_DAMAGE);
     }
 
     private static void applyExplosionEffects(
@@ -91,11 +141,106 @@ public final class DroneExplosionEffects {
         final BlastProfile profile,
         @Nullable final Vec3 impactDirection
     ) {
+        applyExplosionEffects(level, source, attacker, profile, impactDirection, null);
+    }
+
+    private static void applyExplosionEffects(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        final BlastProfile profile,
+        @Nullable final Vec3 impactDirection,
+        @Nullable final Vec3 explicitNormal
+    ) {
         final Vec3 origin = source.position();
+        final Vec3 normal = explicitNormal != null
+            ? (explicitNormal.lengthSqr() > 1.0E-4D ? explicitNormal.normalize() : Vec3.ZERO)
+            : resolveImpactNormal(level, origin, impactDirection);
+        final byte matType = resolveMaterialType(level, origin);
+
+        // Send cinematic visual/particle packet to all clients in range
+        final DroneExplosionPacket packet = new DroneExplosionPacket(
+            origin.x, origin.y, origin.z,
+            (float) normal.x, (float) normal.y, (float) normal.z,
+            profile.explosionType(),
+            matType,
+            profile.power()
+        );
+        FullfudNetwork.getChannel().send(
+            PacketDistributor.NEAR.with(() -> new PacketDistributor.TargetPoint(origin.x, origin.y, origin.z, 512.0D, level.dimension())),
+            packet
+        );
+
+        ServerPlayer resolvedPilot = null;
+        if (attacker instanceof ServerPlayer serverPlayer) {
+            resolvedPilot = serverPlayer;
+        } else if (source instanceof FpvDroneEntity drone && drone.getControllerId() != null && level.getServer() != null) {
+            resolvedPilot = level.getServer().getPlayerList().getPlayer(drone.getControllerId());
+        }
+
+        if (resolvedPilot != null) {
+            final ServerPlayer pilot = resolvedPilot;
+            final double distSq = pilot.distanceToSqr(origin.x, origin.y, origin.z);
+            if (pilot.level().dimension() == level.dimension() && distSq > 512.0D * 512.0D) {
+                FullfudNetwork.getChannel().send(
+                    PacketDistributor.PLAYER.with(() -> pilot),
+                    packet
+                );
+            }
+        }
+
         playLayeredDistanceSounds(level, origin);
-        applyWarbornBlastDamage(level, source, attacker, origin, profile);
-        applySuperbWarfareExplosionDamage(level, source, attacker, origin);
+        applyWarbornBlastDamage(level, source, attacker, origin, normal, profile);
+        applySuperbWarfareExplosionDamage(level, source, attacker, origin, profile);
         spawnShrapnel(level, source, attacker, origin, profile, impactDirection);
+    }
+
+    public static byte resolveMaterialType(final ServerLevel level, final Vec3 origin) {
+        final BlockPos pos = BlockPos.containing(origin);
+        if (level.getFluidState(pos).is(FluidTags.WATER) || level.getFluidState(pos.below()).is(FluidTags.WATER)) {
+            return DroneExplosionPacket.MAT_WATER;
+        }
+
+        final BlockState state = level.getBlockState(pos).isAir() ? level.getBlockState(pos.below()) : level.getBlockState(pos);
+
+        if (state.is(BlockTags.SAND)) {
+            return DroneExplosionPacket.MAT_SAND;
+        }
+        if (state.is(BlockTags.BASE_STONE_OVERWORLD) ||
+            state.is(BlockTags.STONE_ORE_REPLACEABLES) ||
+            state.is(Blocks.GRAVEL) ||
+            state.is(Blocks.COBBLESTONE)) {
+            return DroneExplosionPacket.MAT_STONE;
+        }
+        if (state.is(BlockTags.PLANKS) || state.is(BlockTags.LOGS)) {
+            return DroneExplosionPacket.MAT_WOOD;
+        }
+        if (state.is(BlockTags.DIRT) || state.is(Blocks.GRASS_BLOCK)) {
+            return DroneExplosionPacket.MAT_DIRT;
+        }
+
+        return DroneExplosionPacket.MAT_GENERIC;
+    }
+
+    public static Vec3 resolveImpactNormal(final ServerLevel level, final Vec3 origin, @Nullable final Vec3 velocity) {
+        if (velocity != null && velocity.lengthSqr() > 1.0E-4D) {
+            final Vec3 rayDir = velocity.normalize();
+            final Vec3 rayStart = origin.subtract(rayDir.scale(0.5D));
+            final Vec3 rayEnd = origin.add(rayDir.scale(1.5D));
+            final HitResult hit = level.clip(new ClipContext(rayStart, rayEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, null));
+            if (hit instanceof BlockHitResult blockHit && hit.getType() != HitResult.Type.MISS) {
+                final Direction dir = blockHit.getDirection();
+                return new Vec3(dir.getStepX(), dir.getStepY(), dir.getStepZ());
+            }
+        }
+        // Downward raycast (5.0m) to check for ground contact
+        final Vec3 groundRayEnd = origin.subtract(0.0D, 5.0D, 0.0D);
+        final HitResult groundHit = level.clip(new ClipContext(origin, groundRayEnd, ClipContext.Block.COLLIDER, ClipContext.Fluid.ANY, null));
+        if (groundHit instanceof BlockHitResult blockHit && groundHit.getType() != HitResult.Type.MISS) {
+            final Direction dir = blockHit.getDirection();
+            return new Vec3(dir.getStepX(), dir.getStepY(), dir.getStepZ());
+        }
+        return Vec3.ZERO;
     }
 
     private static void applyWarbornBlastDamage(
@@ -103,15 +248,20 @@ public final class DroneExplosionEffects {
         final Entity source,
         @Nullable final LivingEntity attacker,
         final Vec3 origin,
+        final Vec3 normal,
         final BlastProfile profile
     ) {
         final float baseDamage = profile.baseBlastDamage();
         final float lethalRadius = profile.blastLethalRadius();
         final float maxRadius = profile.blastMaxRadius();
-        final Vec3 explosionOrigin = origin.add(0.0D, 0.5D, 0.0D);
-        final AABB explosionArea = source.getBoundingBox().inflate(maxRadius);
+        // Offset origin along impact normal so blast origin is in open space, not inside solid walls/ground/ceiling
+        final Vec3 explosionOrigin = origin.add(normal.scale(0.2D));
+        final AABB explosionArea = new AABB(
+            explosionOrigin.x - maxRadius, explosionOrigin.y - maxRadius, explosionOrigin.z - maxRadius,
+            explosionOrigin.x + maxRadius, explosionOrigin.y + maxRadius, explosionOrigin.z + maxRadius
+        );
         final List<Entity> entities = new ArrayList<>(level.getEntities(source, explosionArea));
-        final DamageSource damageSource = level.damageSources().thrown(source, attacker != null ? attacker : source);
+        final DamageSource damageSource = level.damageSources().explosion(source, attacker != null ? attacker : source);
 
         for (final Entity target : entities) {
             if (target.isSpectator() || isSuperbWarfareVehicle(target)) {
@@ -151,9 +301,11 @@ public final class DroneExplosionEffects {
         final ServerLevel level,
         final Entity source,
         @Nullable final LivingEntity attacker,
-        final Vec3 origin
+        final Vec3 origin,
+        final BlastProfile profile
     ) {
-        final float diameter = SBW_VEHICLE_EXPLOSION_RADIUS * 2.0F;
+        final float radius = Math.max(SBW_VEHICLE_EXPLOSION_RADIUS, profile.blastLethalRadius());
+        final float diameter = radius * 2.0F;
         final AABB area = new AABB(
             origin.x - diameter - 1.0D,
             origin.y - diameter - 1.0D,
@@ -165,6 +317,7 @@ public final class DroneExplosionEffects {
         final DamageSource damageSource = superbWarfareExplosionDamageSource(level, source, attacker);
         final List<Entity> vehicles = level.getEntities(source, area, DroneExplosionEffects::isSuperbWarfareVehicle);
 
+        final float baseDamage = SBW_VEHICLE_EXPLOSION_DAMAGE * profile.power();
         for (final Entity vehicle : vehicles) {
             final double distanceRatio = Math.sqrt(vehicle.distanceToSqr(origin)) / diameter;
             if (distanceRatio > 1.0D) {
@@ -173,7 +326,7 @@ public final class DroneExplosionEffects {
 
             final double seenPercent = Mth.clamp(net.minecraft.world.level.Explosion.getSeenPercent(origin, vehicle), 0.01D, 1.0D);
             final double damagePercent = (1.0D - distanceRatio) * seenPercent;
-            final float damage = (float) (((damagePercent * damagePercent + damagePercent) / 2.0D) * SBW_VEHICLE_EXPLOSION_DAMAGE);
+            final float damage = (float) (((damagePercent * damagePercent + damagePercent) / 2.0D) * baseDamage);
             if (damage <= 0.0F) {
                 continue;
             }
@@ -304,12 +457,16 @@ public final class DroneExplosionEffects {
         for (final ServerPlayer player : level.players()) {
             final double distanceSqr = player.distanceToSqr(origin);
             if (distanceSqr < DISTANT_CLOSE_RADIUS * DISTANT_CLOSE_RADIUS) {
+                sendDistanceSound(level, player, origin, FullfudRegistries.EXPLOSION_OCP_HEAVY.getHolder(), DISTANT_CLOSE_RADIUS / 16.0F);
                 sendDistanceSound(level, player, origin, FullfudRegistries.EXPLOSION_CLOSE.getHolder(), DISTANT_CLOSE_RADIUS / 16.0F);
             } else if (distanceSqr < DISTANT_MEDIUM_RADIUS * DISTANT_MEDIUM_RADIUS) {
+                sendDistanceSound(level, player, origin, FullfudRegistries.EXPLOSION_OCP_HEAVY.getHolder(), DISTANT_MEDIUM_RADIUS / 16.0F);
                 sendDistanceSound(level, player, origin, FullfudRegistries.EXPLOSION_MEDIUM.getHolder(), DISTANT_MEDIUM_RADIUS / 16.0F);
             } else if (distanceSqr < DISTANT_FAR_RADIUS * DISTANT_FAR_RADIUS) {
+                sendDistanceSound(level, player, origin, FullfudRegistries.EXPLOSION_OCP_DISTANT.getHolder(), DISTANT_FAR_RADIUS / 16.0F);
                 sendDistanceSound(level, player, origin, FullfudRegistries.EXPLOSION_FAR.getHolder(), DISTANT_FAR_RADIUS / 16.0F);
-            } else {
+            } else if (distanceSqr < 400.0F * 400.0F) {
+                sendDistanceSound(level, player, origin, FullfudRegistries.EXPLOSION_OCP_DISTANT.getHolder(), 25.0F);
                 sendDistanceSound(level, player, origin, FullfudRegistries.EXPLOSION_VERYFAR.getHolder(), 20.0F);
             }
         }
@@ -367,19 +524,27 @@ public final class DroneExplosionEffects {
 
         for (final Vec3 targetPoint : targetPoints) {
             final ClipContext clipContext = new ClipContext(explosionOrigin, targetPoint, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, source);
-            if (level.clip(clipContext).getType() == HitResult.Type.MISS) {
+            final HitResult hit = level.clip(clipContext);
+            if (hit.getType() == HitResult.Type.MISS) {
                 return true;
+            }
+            if (hit instanceof BlockHitResult blockHit) {
+                if (blockHit.getLocation().distanceToSqr(targetPoint) < 0.35D) {
+                    return true;
+                }
             }
         }
 
         return false;
     }
 
-    private static boolean isSuperbWarfareVehicle(final Entity entity) {
+    public static boolean isSuperbWarfareVehicle(final Entity entity) {
         return SuperbWarfareCompat.isVehicle(entity);
     }
 
     private record BlastProfile(
+        byte explosionType,
+        float power,
         int shrapnelCount,
         float shrapnelDamage,
         double shrapnelRange,

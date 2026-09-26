@@ -1,6 +1,8 @@
 package com.fullfud.fullfud.common.entity;
 
 import com.fullfud.fullfud.common.item.MonitorItem;
+import com.fullfud.fullfud.core.ChunkLoadManager;
+import com.fullfud.fullfud.core.DroneExplosionEffects;
 import com.fullfud.fullfud.core.FullfudRegistries;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -14,6 +16,7 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -43,6 +46,7 @@ import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 import org.joml.Vector3f;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -50,9 +54,12 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
     public static final float SCALE = 2.25F;
 
     private static final EntityDataAccessor<Boolean> DATA_ON_LAUNCHER = SynchedEntityData.defineId(Fp5FlamingoEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_LAUNCHER_ID = SynchedEntityData.defineId(Fp5FlamingoEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> DATA_SERVER_YAW = SynchedEntityData.defineId(Fp5FlamingoEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_SERVER_PITCH = SynchedEntityData.defineId(Fp5FlamingoEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DATA_SERVER_ROLL = SynchedEntityData.defineId(Fp5FlamingoEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Boolean> DATA_LAUNCHED = SynchedEntityData.defineId(Fp5FlamingoEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DATA_BOOSTER_ACTIVE = SynchedEntityData.defineId(Fp5FlamingoEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDimensions FLAMINGO_SIZE = EntityDimensions.scalable(1.9375F * SCALE, 1.2F * SCALE);
 
     private static final String TAG_ON_LAUNCHER = "OnLauncher";
@@ -70,6 +77,7 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
     private static final String TAG_LAUNCH_ORIGIN_X = "LaunchOriginX";
     private static final String TAG_LAUNCH_ORIGIN_Z = "LaunchOriginZ";
     private static final String TAG_LAUNCH_LOCKED_YAW = "LaunchLockedYaw";
+    private static final String TAG_LAUNCH_LOCKED_PITCH = "LaunchLockedPitch";
     private static final String TAG_BODY_ROLL = "BodyRoll";
     private static final String TAG_YAW_RATE = "YawRate";
     private static final String TAG_LAUNCH_TICKS = "LaunchTicks";
@@ -89,65 +97,67 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
     private static final int FLIGHT_PHASE_CRUISE = 2;
     private static final int FLIGHT_PHASE_TERMINAL = 3;
 
+    public static final int LAUNCH_RAIL_LOCK_TICKS = 70;
+    public static final int LAUNCHER_CLEARANCE_TICKS = 20;
+    public static final double LAUNCHER_CLEARANCE_DISTANCE = 16.0D;
+    public static final double MIN_LAUNCH_DISTANCE = 400.0D;
+
     private static final double CLIMB_TARGET_FORWARD = 24.0D;
     private static final double INITIAL_STRAIGHT_DISTANCE = 200.0D;
-    private static final double TURN_AUTHORITY_RAMP_DISTANCE = 160.0D;
     private static final double CLIMB_ALTITUDE_MIN = 20.0D;
     private static final double CLIMB_ALTITUDE_RANDOM = 31.0D;
     private static final double TARGET_ALTITUDE_BUFFER = 8.0D;
     private static final double CLIMB_ALTITUDE_RESPONSE_DISTANCE = 18.0D;
     private static final double CRUISE_ALTITUDE_RESPONSE_DISTANCE = 40.0D;
-    private static final int BOOSTER_KICK_TICKS = 12;
-    private static final int BOOSTER_BURN_TICKS = 120;
-    private static final int BOOSTER_DECAY_TICKS = 40;
-    private static final int POST_BOOST_RECOVERY_TICKS = 90;
-    private static final double BOOSTER_PEAK_SPEED = 5.2D;
-    private static final double BOOSTER_SUSTAIN_SPEED = 3.45D;
-    private static final double BOOSTER_SETTLE_SPEED = 1.85D;
-    private static final double BOOSTER_ACCEL_STEP = 0.36D;
-    private static final double BOOSTER_SUSTAIN_STEP = 0.11D;
-    private static final double BOOSTER_DECAY_STEP = 0.16D;
-    private static final double POST_BOOST_ACCEL_STEP = 0.05D;
-    private static final double CLIMB_SPEED_TARGET = 2.15D;
-    private static final double CRUISE_SPEED_TARGET = 2.95D;
-    private static final double TERMINAL_SPEED_TARGET = 3.65D;
+    public static final int BOOSTER_KICK_TICKS = 15;
+    public static final int BOOSTER_BURN_TICKS = 70;
+    public static final int MAX_FLIGHT_TICKS = 6000;
+    public static final int BOOSTER_TRANSITION_TICKS = 45;
+    public static final double BOOSTER_PEAK_SPEED = 5.2D;
+    public static final double BOOSTER_SUSTAIN_SPEED = 4.2D;
+    public static final double BOOSTER_ACCEL_STEP = 0.38D;
+    public static final double BOOSTER_SUSTAIN_STEP = 0.08D;
+    public static final double BOOSTER_TRANSITION_STEP = 0.08D;
+    public static final double CRUISE_SPEED_TARGET = 2.95D;
+    public static final double TERMINAL_SPEED_TARGET = 3.65D;
     private static final double MIN_SPEED_STEP = 0.02D;
     private static final double MAX_SPEED_STEP = 0.09D;
     private static final float CLIMB_PITCH_RATE_LIMIT = 0.85F;
-    private static final float CRUISE_PITCH_RATE_LIMIT = 0.45F;
-    private static final float TERMINAL_PITCH_RATE_LIMIT = 1.2F;
-    private static final float PITCH_RATE_RESPONSE = 0.09F;
-    private static final float CLIMB_BANK_LIMIT = 4.0F;
-    private static final float CRUISE_BANK_LIMIT = 8.0F;
-    private static final float TERMINAL_BANK_LIMIT = 12.0F;
-    private static final float BANK_RESPONSE_STEP = 0.42F;
-    private static final double CLIMB_LATERAL_SLIP_LIMIT = 0.018D;
-    private static final double CRUISE_LATERAL_SLIP_LIMIT = 0.052D;
-    private static final double TERMINAL_LATERAL_SLIP_LIMIT = 0.032D;
-    private static final double SLIP_BUILD_STEP = 0.0028D;
-    private static final double SLIP_DECAY_STEP = 0.0042D;
-    private static final double CRUISE_STEER_BLEND = 0.08D;
-    private static final double TERMINAL_STEER_BLEND = 0.16D;
-    private static final float MAX_CLIMB_YAW_RATE = 0.35F;
-    private static final float MAX_CRUISE_YAW_RATE = 0.55F;
-    private static final float MAX_TERMINAL_YAW_RATE = 0.75F;
-    private static final float CLIMB_YAW_ACCEL = 0.032F;
-    private static final float CRUISE_YAW_ACCEL = 0.046F;
-    private static final float TERMINAL_YAW_ACCEL = 0.065F;
-    private static final float CLIMB_YAW_DAMPING = 0.016F;
-    private static final float CRUISE_YAW_DAMPING = 0.022F;
-    private static final float TERMINAL_YAW_DAMPING = 0.03F;
+    private static final float CRUISE_PITCH_RATE_LIMIT = 0.28F;
+    private static final float TERMINAL_PITCH_RATE_LIMIT = 0.45F;
+    private static final float PITCH_RATE_RESPONSE = 0.045F;
+    public static final float CLIMB_BANK_LIMIT = 15.0F;
+    public static final float CRUISE_BANK_LIMIT = 30.0F;
+    public static final float TERMINAL_BANK_LIMIT = 40.0F;
+    public static final float BANK_RESPONSE_STEP = 0.40F;
+    private static final double CLIMB_LATERAL_SLIP_LIMIT = 0.025D;
+    private static final double CRUISE_LATERAL_SLIP_LIMIT = 0.075D;
+    private static final double TERMINAL_LATERAL_SLIP_LIMIT = 0.050D;
+    private static final double SLIP_BUILD_STEP = 0.0035D;
+    private static final double SLIP_DECAY_STEP = 0.0050D;
+    private static final double CRUISE_STEER_BLEND = 0.045D;
+    private static final double TERMINAL_STEER_BLEND = 0.09D;
+    private static final float MAX_CLIMB_YAW_RATE = 0.45F;
+    private static final float MAX_CRUISE_YAW_RATE = 0.38F;
+    private static final float MAX_TERMINAL_YAW_RATE = 0.48F;
+    private static final float CLIMB_YAW_ACCEL = 0.038F;
+    private static final float CRUISE_YAW_ACCEL = 0.030F;
+    private static final float TERMINAL_YAW_ACCEL = 0.040F;
+    private static final float CLIMB_YAW_DAMPING = 0.018F;
+    private static final float CRUISE_YAW_DAMPING = 0.015F;
+    private static final float TERMINAL_YAW_DAMPING = 0.020F;
     private static final float YAW_MISMATCH_BRAKE = 0.06F;
     private static final double CLIMB_PHASE_THRESHOLD = 3.0D;
+    public static final double CRUISE_TERRAIN_CLEARANCE = 100.0D;
+    public static final double TERMINAL_APPROACH_DISTANCE = 350.0D;
     private static final double TERMINAL_HORIZONTAL_THRESHOLD = 14.0D;
     private static final double TERMINAL_DISTANCE_THRESHOLD = 1.2D;
-    private static final float TERMINAL_DIVE_PITCH = 45.0F;
-    private static final float TERMINAL_MAX_PITCH = 72.0F;
+    private static final float TERMINAL_DIVE_PITCH = 16.0F;
+    private static final float TERMINAL_MAX_PITCH = 35.0F;
     private static final double TERMINAL_GROUND_OFFSET = 0.15D;
     private static final double TERRAIN_IMPACT_BUFFER = 0.35D;
     private static final float TNT_POWER = 4.0F;
-    private static final int GUIDANCE_DELAY_TICKS = 42;
-    private static final int GUIDANCE_RAMP_TICKS = 90;
+    public static final int GUIDANCE_RAMP_TICKS = 45;
     private static final double EXHAUST_REAR_OFFSET = 2.45D * SCALE;
     private static final double EXHAUST_VERTICAL_OFFSET = 0.16D * SCALE;
     private static final double EXHAUST_SIDE_SPREAD = 0.18D * SCALE;
@@ -171,16 +181,24 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
     private double launchOriginX;
     private double launchOriginZ;
     private float launchLockedYaw;
+    private float launchLockedPitch = -MODEL_BASE_PITCH_DEGREES;
     private float bodyRoll;
     private float bodyRollO;
     private float yawRate;
     private float pitchRate;
     private double lateralSlip;
     private int launchTicks;
+    private int stationaryTicks;
+    private static final int STATIONARY_UNLOAD_THRESHOLD_TICKS = 200;
     private int lerpSteps;
     private double lerpX;
     private double lerpY;
     private double lerpZ;
+
+    @Override
+    public boolean shouldRenderAtSqrDistance(final double distance) {
+        return distance < 4096.0D * 4096.0D;
+    }
 
     public Fp5FlamingoEntity(final EntityType<? extends Fp5FlamingoEntity> type, final Level level) {
         super(type, level);
@@ -203,9 +221,12 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
     @Override
     protected void defineSynchedData() {
         entityData.define(DATA_ON_LAUNCHER, false);
+        entityData.define(DATA_LAUNCHER_ID, -1);
         entityData.define(DATA_SERVER_YAW, getYRot());
         entityData.define(DATA_SERVER_PITCH, getXRot());
         entityData.define(DATA_SERVER_ROLL, 0.0F);
+        entityData.define(DATA_LAUNCHED, false);
+        entityData.define(DATA_BOOSTER_ACTIVE, false);
     }
 
     @Override
@@ -235,6 +256,11 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         launchOriginX = tag.getDouble(TAG_LAUNCH_ORIGIN_X);
         launchOriginZ = tag.getDouble(TAG_LAUNCH_ORIGIN_Z);
         launchLockedYaw = tag.getFloat(TAG_LAUNCH_LOCKED_YAW);
+        if (tag.contains(TAG_LAUNCH_LOCKED_PITCH)) {
+            launchLockedPitch = tag.getFloat(TAG_LAUNCH_LOCKED_PITCH);
+        } else {
+            launchLockedPitch = -MODEL_BASE_PITCH_DEGREES;
+        }
         bodyRoll = tag.getFloat(TAG_BODY_ROLL);
         bodyRollO = bodyRoll;
         yawRate = tag.getFloat(TAG_YAW_RATE);
@@ -242,12 +268,15 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         pitchRate = tag.getFloat(TAG_PITCH_RATE);
         lateralSlip = tag.getDouble(TAG_LATERAL_SLIP);
 
+        entityData.set(DATA_LAUNCHED, launched);
+        entityData.set(DATA_BOOSTER_ACTIVE, launched && launchTicks <= LAUNCH_RAIL_LOCK_TICKS);
+
         if (isOnLauncher()) {
             noPhysics = true;
             setNoGravity(true);
             setDeltaMovement(Vec3.ZERO);
         } else if (launched) {
-            noPhysics = false;
+            noPhysics = launchTicks <= LAUNCHER_CLEARANCE_TICKS;
             setNoGravity(true);
         }
         updateBoundingBox();
@@ -274,6 +303,7 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         tag.putDouble(TAG_LAUNCH_ORIGIN_X, launchOriginX);
         tag.putDouble(TAG_LAUNCH_ORIGIN_Z, launchOriginZ);
         tag.putFloat(TAG_LAUNCH_LOCKED_YAW, launchLockedYaw);
+        tag.putFloat(TAG_LAUNCH_LOCKED_PITCH, launchLockedPitch);
         tag.putFloat(TAG_BODY_ROLL, bodyRoll);
         tag.putFloat(TAG_YAW_RATE, yawRate);
         tag.putInt(TAG_LAUNCH_TICKS, launchTicks);
@@ -289,7 +319,13 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         bodyRollO = bodyRoll;
 
         if (level().isClientSide()) {
+            handleClientSync();
             bodyRoll = entityData.get(DATA_SERVER_ROLL);
+            if (isLaunched()) {
+                net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT, () -> () -> {
+                    com.fullfud.fullfud.client.particle.Fp5ClientVfx.tick(this);
+                });
+            }
         }
 
         if (isOnLauncher()) {
@@ -303,15 +339,72 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
                 discard();
                 return;
             }
+            if (!level().isClientSide()) {
+                handleClientSync();
+                stationaryTicks++;
+                if (stationaryTicks < STATIONARY_UNLOAD_THRESHOLD_TICKS && level() instanceof ServerLevel serverLevel) {
+                    ChunkLoadManager.ensureChunksLoaded(serverLevel, getId(), chunkPosition(), 3);
+                } else if (level() instanceof ServerLevel serverLevel) {
+                    ChunkLoadManager.releaseChunks(serverLevel, getId());
+                }
+            }
             updateBoundingBox();
+            broadcastGhostState();
             return;
+        }
+
+        if (!level().isClientSide()) {
+            final boolean hasMovement = getDeltaMovement().lengthSqr() > 0.0004D;
+            final boolean activeFlight = launched || hasTarget;
+            if (hasMovement || activeFlight) {
+                stationaryTicks = 0;
+            } else {
+                stationaryTicks++;
+            }
+            if (level() instanceof ServerLevel serverLevel) {
+                if (stationaryTicks < STATIONARY_UNLOAD_THRESHOLD_TICKS) {
+                    ChunkLoadManager.ensureChunksLoaded(serverLevel, getId(), chunkPosition(), 3);
+                } else {
+                    ChunkLoadManager.releaseChunks(serverLevel, getId());
+                }
+            }
         }
 
         if (!level().isClientSide() && launched) {
             tickAutopilot();
+            handleClientSync();
         }
 
-        handleClientSync();
+        updateBoundingBox();
+        broadcastGhostState();
+    }
+
+    private void broadcastGhostState() {
+        if (!level().isClientSide() && tickCount % 4 == 0 && level() instanceof ServerLevel serverLevel) {
+            final var packet = new com.fullfud.fullfud.core.network.packet.Fp5GhostUpdatePacket(
+                getUUID(), getX(), getY(), getZ(), getYRot(), getXRot(), bodyRoll,
+                isOnLauncher(), launched, isBoosterActive());
+            for (final ServerPlayer player : serverLevel.players()) {
+                if (player.distanceToSqr(this) <= 4096.0D * 4096.0D) {
+                    com.fullfud.fullfud.core.network.FullfudNetwork.getChannel().send(
+                        net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player), packet);
+                }
+            }
+        }
+    }
+
+    public void applyClientGhostState(final double x, final double y, final double z,
+                                      final float yaw, final float pitch, final float roll,
+                                      final boolean onLauncher, final boolean launched, final boolean booster) {
+        setPos(x, y, z);
+        setRot(yaw, pitch);
+        yRotO = yaw;
+        xRotO = pitch;
+        bodyRoll = roll;
+        bodyRollO = roll;
+        entityData.set(DATA_ON_LAUNCHER, onLauncher);
+        entityData.set(DATA_LAUNCHED, launched);
+        entityData.set(DATA_BOOSTER_ACTIVE, booster);
         updateBoundingBox();
     }
 
@@ -323,10 +416,18 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
                        final float pitch,
                        final int posRotationIncrements,
                        final boolean teleport) {
-        this.lerpX = x;
-        this.lerpY = y;
-        this.lerpZ = z;
-        this.lerpSteps = 10;
+        if (isOnLauncher()) {
+            return;
+        }
+        if (teleport) {
+            setPos(x, y, z);
+            this.lerpSteps = 0;
+        } else {
+            this.lerpX = x;
+            this.lerpY = y;
+            this.lerpZ = z;
+            this.lerpSteps = Math.max(1, posRotationIncrements);
+        }
     }
 
     @Override
@@ -357,7 +458,7 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
             return false;
         }
         if (launched) {
-            detonate(position());
+            detonate(position(), Vec3.ZERO);
             return true;
         }
         final Fp5LauncherEntity launcher = resolveLauncher();
@@ -372,6 +473,9 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
 
     @Override
     public void remove(final RemovalReason reason) {
+        if (!level().isClientSide() && level() instanceof ServerLevel serverLevel) {
+            ChunkLoadManager.releaseChunks(serverLevel, getId());
+        }
         if (!level().isClientSide && reason.shouldDestroy() && dropItemOnRemove) {
             final Fp5LauncherEntity launcher = resolveLauncher();
             if (launcher != null) {
@@ -407,7 +511,11 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
     }
 
     public boolean isLaunched() {
-        return launched;
+        return entityData.get(DATA_LAUNCHED);
+    }
+
+    public boolean isBoosterActive() {
+        return entityData.get(DATA_BOOSTER_ACTIVE);
     }
 
     public UUID getLauncherUuid() {
@@ -418,10 +526,26 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         return hasTarget ? targetPos : blockPosition();
     }
 
+    public void setMonitorTarget(final BlockPos target) {
+        if (!launched && target != null) {
+            targetPos = target.immutable();
+            hasTarget = true;
+        }
+    }
+
+    public void detonateMounted() {
+        if (!level().isClientSide() && isOnLauncher() && isAlive()) {
+            detonate(position());
+        }
+    }
+
     public void mountLauncher(final Fp5LauncherEntity launcher) {
         mountedLauncherId = launcher.getId();
         mountedLauncherUuid = launcher.getUUID();
         entityData.set(DATA_ON_LAUNCHER, true);
+        entityData.set(DATA_LAUNCHER_ID, launcher.getId());
+        entityData.set(DATA_LAUNCHED, false);
+        entityData.set(DATA_BOOSTER_ACTIVE, false);
         launched = false;
         hasTarget = false;
         targetPos = BlockPos.ZERO;
@@ -433,6 +557,7 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         launchOriginX = getX();
         launchOriginZ = getZ();
         launchLockedYaw = getYRot();
+        launchLockedPitch = -MODEL_BASE_PITCH_DEGREES;
         bodyRoll = 0.0F;
         bodyRollO = 0.0F;
         yawRate = 0.0F;
@@ -440,10 +565,17 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         lateralSlip = 0.0D;
         launchTicks = 0;
         keepMountedOnLauncher(launcher);
+        handleClientSync();
     }
 
     public boolean launchToCoordinates(final BlockPos targetPos) {
         if (level().isClientSide() || !isAlive() || launched || !isOnLauncher() || targetPos == null) {
+            return false;
+        }
+
+        final double dx = targetPos.getX() + 0.5D - getX();
+        final double dz = targetPos.getZ() + 0.5D - getZ();
+        if (dx * dx + dz * dz < MIN_LAUNCH_DISTANCE * MIN_LAUNCH_DISTANCE) {
             return false;
         }
 
@@ -453,6 +585,9 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         }
 
         entityData.set(DATA_ON_LAUNCHER, false);
+        entityData.set(DATA_LAUNCHER_ID, -1);
+        entityData.set(DATA_LAUNCHED, true);
+        entityData.set(DATA_BOOSTER_ACTIVE, true);
         mountedLauncherId = -1;
         mountedLauncherUuid = null;
         launched = true;
@@ -461,28 +596,48 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         launchOriginX = getX();
         launchOriginZ = getZ();
         launchLockedYaw = getYRot();
+        launchLockedPitch = -MODEL_BASE_PITCH_DEGREES;
         bodyRoll = 0.0F;
         bodyRollO = 0.0F;
         yawRate = 0.0F;
         pitchRate = 0.0F;
         lateralSlip = 0.0D;
         launchTicks = 0;
-        final double targetGroundY = sampleSurfaceY(targetPos.getX() + 0.5D, targetPos.getZ() + 0.5D);
+        final double currentGroundY = sampleSurfaceY(getX(), getZ());
         flightPhase = FLIGHT_PHASE_CLIMB;
-        cruiseAltitude = Math.max(
-            getY() + CLIMB_ALTITUDE_MIN + random.nextInt((int) CLIMB_ALTITUDE_RANDOM),
-            targetGroundY + TARGET_ALTITUDE_BUFFER
-        );
+        cruiseAltitude = currentGroundY + CRUISE_TERRAIN_CLEARANCE;
 
         final Vec3 launchDirection = getCourseDirection();
         climbWaypointX = getX() + launchDirection.x * CLIMB_TARGET_FORWARD;
         climbWaypointZ = getZ() + launchDirection.z * CLIMB_TARGET_FORWARD;
         flightSpeed = 0.3D;
 
-        noPhysics = false;
+        noPhysics = true;
         setNoGravity(true);
         setDeltaMovement(Vec3.ZERO);
+
+        level().playSound(
+            null,
+            getX(),
+            getY(),
+            getZ(),
+            FullfudRegistries.FP5_LAUNCH_BOOST.get(),
+            SoundSource.NEUTRAL,
+            5.0F,
+            1.0F
+        );
         return true;
+    }
+
+    @Override
+    public void onClientRemoval() {
+        super.onClientRemoval();
+        if (level().isClientSide()) {
+            net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT, () -> () -> {
+                com.fullfud.fullfud.client.sound.Fp5SoundHandler.stopForFlamingo(getUUID());
+                com.fullfud.fullfud.client.particle.Fp5ClientVfx.remove(getUUID());
+            });
+        }
     }
 
     public ItemStack createItemStack() {
@@ -507,14 +662,52 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
     }
 
     private void handleClientSync() {
-        if (level() instanceof ServerLevel && tickCount % 2 == 0) {
+        if (level() instanceof ServerLevel) {
             entityData.set(DATA_SERVER_YAW, getYRot());
             entityData.set(DATA_SERVER_PITCH, getXRot());
             entityData.set(DATA_SERVER_ROLL, bodyRoll);
+            entityData.set(DATA_LAUNCHED, launched);
+            entityData.set(DATA_BOOSTER_ACTIVE, launched && launchTicks <= LAUNCH_RAIL_LOCK_TICKS);
+            return;
         }
+        if (isOnLauncher()) {
+            final Fp5LauncherEntity launcher = resolveLauncher();
+            if (launcher != null) {
+                updateLauncherPose(launcher);
+            } else {
+                final float serverYaw = entityData.get(DATA_SERVER_YAW);
+                final float serverPitch = entityData.get(DATA_SERVER_PITCH);
+                setYRot(serverYaw);
+                setXRot(serverPitch);
+                setYBodyRot(serverYaw);
+                setYHeadRot(serverYaw);
+                setOldPosAndRot();
+            }
+            bodyRoll = 0.0F;
+            bodyRollO = 0.0F;
+            lerpSteps = 0;
+            return;
+        }
+
+        final float targetYaw = entityData.get(DATA_SERVER_YAW);
+        final float targetPitch = entityData.get(DATA_SERVER_PITCH);
+        final float diffY = Mth.wrapDegrees(targetYaw - getYRot());
+        final float diffX = Mth.wrapDegrees(targetPitch - getXRot());
+
+        if (Math.abs(diffY) > 90.0F || Math.abs(diffX) > 90.0F) {
+            setYRot(targetYaw);
+            setXRot(targetPitch);
+        } else {
+            setYRot(getYRot() + diffY * 0.45F);
+            setXRot(getXRot() + diffX * 0.45F);
+        }
+        setYBodyRot(getYRot());
+        setYHeadRot(getYRot());
+
         if (isControlledByLocalInstance()) {
             lerpSteps = 0;
             syncPacketPositionCodec(getX(), getY(), getZ());
+            return;
         }
         if (lerpSteps <= 0) {
             return;
@@ -523,19 +716,39 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         final double interpolatedX = getX() + (lerpX - getX()) / (double) lerpSteps;
         final double interpolatedY = getY() + (lerpY - getY()) / (double) lerpSteps;
         final double interpolatedZ = getZ() + (lerpZ - getZ()) / (double) lerpSteps;
-        final float diffY = Mth.wrapDegrees(entityData.get(DATA_SERVER_YAW) - getYRot());
-        final float diffX = Mth.wrapDegrees(entityData.get(DATA_SERVER_PITCH) - getXRot());
-
-        setYRot(getYRot() + 0.1F * diffY);
-        setXRot(getXRot() + 0.1F * diffX);
-        setYBodyRot(getYRot());
-        setYHeadRot(getYRot());
         setPos(interpolatedX, interpolatedY, interpolatedZ);
 
         --lerpSteps;
     }
 
+    @Override
+    public void onSyncedDataUpdated(final EntityDataAccessor<?> key) {
+        super.onSyncedDataUpdated(key);
+        if (level().isClientSide()) {
+            if (DATA_SERVER_YAW.equals(key) || DATA_SERVER_PITCH.equals(key)) {
+                if (isOnLauncher()) {
+                    final float sy = entityData.get(DATA_SERVER_YAW);
+                    final float sp = entityData.get(DATA_SERVER_PITCH);
+                    setYRot(sy);
+                    setXRot(sp);
+                    setYBodyRot(sy);
+                    setYHeadRot(sy);
+                    yRotO = sy;
+                    xRotO = sp;
+                }
+            }
+        }
+    }
+
     private Fp5LauncherEntity resolveLauncher() {
+        final int syncedLauncherId = entityData.get(DATA_LAUNCHER_ID);
+        if (syncedLauncherId > 0) {
+            final Entity entity = level().getEntity(syncedLauncherId);
+            if (entity instanceof Fp5LauncherEntity launcher && launcher.isAlive()) {
+                mountedLauncherId = syncedLauncherId;
+                return launcher;
+            }
+        }
         if (mountedLauncherId > 0) {
             final Entity entity = level().getEntity(mountedLauncherId);
             if (entity instanceof Fp5LauncherEntity launcher && launcher.isAlive()) {
@@ -562,11 +775,15 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
             .add(forward.scale(LAUNCHER_MOUNT_FORWARD_OFFSET));
         setPos(anchor.x, anchor.y, anchor.z);
         setCourseOrientation(yaw, -MODEL_BASE_PITCH_DEGREES);
+        setOldPosAndRot();
+        this.lerpSteps = 0;
     }
 
     private void tickAutopilot() {
         if (!hasTarget) {
             launched = false;
+            entityData.set(DATA_LAUNCHED, false);
+            entityData.set(DATA_BOOSTER_ACTIVE, false);
             flightPhase = FLIGHT_PHASE_IDLE;
             setDeltaMovement(Vec3.ZERO);
             yawRate = 0.0F;
@@ -577,42 +794,128 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         }
 
         launchTicks++;
+        if (launchTicks >= MAX_FLIGHT_TICKS) {
+            detonate(position(), Vec3.ZERO);
+            return;
+        }
+
+        final boolean boosterActive = launchTicks <= LAUNCH_RAIL_LOCK_TICKS;
+        if (entityData.get(DATA_BOOSTER_ACTIVE) != boosterActive) {
+            entityData.set(DATA_BOOSTER_ACTIVE, boosterActive);
+        }
+        if (!entityData.get(DATA_LAUNCHED)) {
+            entityData.set(DATA_LAUNCHED, true);
+        }
+
+        if (launchTicks <= LAUNCHER_CLEARANCE_TICKS) {
+            this.noPhysics = true;
+        } else {
+            this.noPhysics = false;
+        }
 
         final Vec3 currentPos = position();
         final Vec3 impactTarget = resolveImpactPoint();
         final Vec3 phaseTarget = resolvePhaseTarget(impactTarget);
         final Vec3 flightMotion = computeFlightMotion(currentPos, phaseTarget, impactTarget);
         spawnExhaustParticles();
-        final HitResult blockHit = level().clip(new ClipContext(
-            currentPos,
-            currentPos.add(flightMotion),
-            ClipContext.Block.COLLIDER,
-            ClipContext.Fluid.NONE,
-            this
-        ));
-        if (blockHit.getType() != HitResult.Type.MISS) {
-            detonate(blockHit.getLocation());
-            return;
+
+        if (launchTicks > LAUNCHER_CLEARANCE_TICKS) {
+            final double distFromOriginSqr = currentPos.distanceToSqr(launchOriginX, currentPos.y, launchOriginZ);
+            if (distFromOriginSqr >= LAUNCHER_CLEARANCE_DISTANCE * LAUNCHER_CLEARANCE_DISTANCE) {
+                final HitResult blockHit = level().clip(new ClipContext(
+                    currentPos,
+                    currentPos.add(flightMotion),
+                    ClipContext.Block.COLLIDER,
+                    ClipContext.Fluid.NONE,
+                    this
+                ));
+                if (blockHit.getType() != HitResult.Type.MISS) {
+                    final net.minecraft.core.Direction hitDir = ((net.minecraft.world.phys.BlockHitResult) blockHit).getDirection();
+                    detonate(blockHit.getLocation(), new Vec3(hitDir.getStepX(), hitDir.getStepY(), hitDir.getStepZ()));
+                    return;
+                }
+            }
+
+            // Entity collision raycasting along flight path vector
+            final Vec3 nextPos = currentPos.add(flightMotion);
+            final AABB sweptArea = getBoundingBox().expandTowards(flightMotion).inflate(1.0D);
+            final List<Entity> candidates = level().getEntities(
+                this,
+                sweptArea,
+                entity -> !entity.isSpectator() && entity.isPickable() && !entity.isPassengerOfSameVehicle(this)
+            );
+
+            Entity closestHitEntity = null;
+            Vec3 closestHitPos = null;
+            double closestDistanceSq = Double.MAX_VALUE;
+
+            for (final Entity candidate : candidates) {
+                if (candidate instanceof Fp5LauncherEntity && distFromOriginSqr < LAUNCHER_CLEARANCE_DISTANCE * LAUNCHER_CLEARANCE_DISTANCE) {
+                    continue;
+                }
+                final AABB candidateAabb = candidate.getBoundingBox().inflate(0.3D);
+                final Optional<Vec3> clip = candidateAabb.clip(currentPos, nextPos);
+                if (clip.isPresent()) {
+                    final double distSq = currentPos.distanceToSqr(clip.get());
+                    if (distSq < closestDistanceSq) {
+                        closestDistanceSq = distSq;
+                        closestHitEntity = candidate;
+                        closestHitPos = clip.get();
+                    }
+                }
+            }
+
+            if (closestHitEntity != null && closestHitPos != null) {
+                if (DroneExplosionEffects.isSuperbWarfareVehicle(closestHitEntity)) {
+                    DroneExplosionEffects.applyDirectImpactVehicleDamage(
+                        (ServerLevel) level(),
+                        this,
+                        null,
+                        closestHitEntity,
+                        4500.0F
+                    );
+                }
+                detonate(closestHitPos, null);
+                return;
+            }
         }
 
         move(MoverType.SELF, flightMotion);
         setDeltaMovement(flightMotion);
+
+        if (launchTicks > LAUNCHER_CLEARANCE_TICKS) {
+            if (this.horizontalCollision || this.verticalCollision || this.minorHorizontalCollision) {
+                final Vec3 impactNormal = this.verticalCollision
+                    ? (flightMotion.y < 0.0D ? new Vec3(0.0D, 1.0D, 0.0D) : new Vec3(0.0D, -1.0D, 0.0D))
+                    : (flightMotion.lengthSqr() > 1.0E-4D ? flightMotion.normalize().scale(-1.0D) : new Vec3(0.0D, 1.0D, 0.0D));
+                detonate(position(), impactNormal);
+                return;
+            }
+            final double movedDistSq = position().distanceToSqr(currentPos);
+            if (flightMotion.lengthSqr() > 0.25D && movedDistSq < 0.04D) {
+                detonate(position(), new Vec3(0.0D, 1.0D, 0.0D));
+                return;
+            }
+        }
+
         advanceFlightPhase(impactTarget);
 
         if (position().distanceTo(impactTarget) <= TERMINAL_DISTANCE_THRESHOLD) {
-            detonate(position());
+            detonate(position(), null);
             return;
         }
 
         if (hasReachedTerrain()) {
-            detonate(new Vec3(getX(), sampleSurfaceY(getX(), getZ()), getZ()));
+            detonate(new Vec3(getX(), sampleSurfaceY(getX(), getZ()), getZ()), new Vec3(0.0D, 1.0D, 0.0D));
             return;
         }
 
         if (getY() <= level().getMinBuildHeight() + 1) {
-            detonate(position());
+            detonate(position(), new Vec3(0.0D, 1.0D, 0.0D));
+            return;
         }
     }
+
 
     private Vec3 resolvePhaseTarget(final Vec3 impactTarget) {
         if (!hasTarget) {
@@ -637,11 +940,13 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         final boolean launchTurnLocked = isLaunchTurnLocked();
         final float targetYaw = Mth.wrapDegrees((float) (-(Mth.atan2(delta.x, delta.z) * Mth.RAD_TO_DEG)) + MODEL_FORWARD_YAW_OFFSET);
         final float desiredYaw = launchTurnLocked ? launchLockedYaw : targetYaw;
-        final float desiredPitch = switch (flightPhase) {
-            case FLIGHT_PHASE_CLIMB -> computeAltitudeHoldPitch(cruiseAltitude - currentPos.y, CLIMB_ALTITUDE_RESPONSE_DISTANCE, 30.0F);
-            case FLIGHT_PHASE_TERMINAL -> computeTerminalPitch(currentPos, impactTarget);
-            default -> computeAltitudeHoldPitch(cruiseAltitude - currentPos.y, CRUISE_ALTITUDE_RESPONSE_DISTANCE, 12.0F);
-        };
+        final float desiredPitch = launchTurnLocked
+            ? computeLaunchPitch(launchTicks)
+            : switch (flightPhase) {
+                case FLIGHT_PHASE_CLIMB -> computeAltitudeHoldPitch(cruiseAltitude - currentPos.y, CLIMB_ALTITUDE_RESPONSE_DISTANCE, 30.0F);
+                case FLIGHT_PHASE_TERMINAL -> computeTerminalPitch(currentPos, impactTarget);
+                default -> computeAltitudeHoldPitch(cruiseAltitude - currentPos.y, CRUISE_ALTITUDE_RESPONSE_DISTANCE, 12.0F);
+            };
 
         final float currentYaw = getYRot();
         final float currentCoursePitch = getCoursePitch();
@@ -660,8 +965,8 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         final float effectiveBankLimit = flightPhase == FLIGHT_PHASE_TERMINAL ? bankLimit : bankLimit * turnAuthority;
         final float targetBank = launchTurnLocked
             ? 0.0F
-            : Mth.clamp(yawError * 0.16F, -effectiveBankLimit, effectiveBankLimit);
-        final float nextRoll = (float) approachValue(bodyRoll, targetBank, BANK_RESPONSE_STEP);
+            : Mth.clamp(yawError * 0.5F, -effectiveBankLimit, effectiveBankLimit);
+        final float nextRoll = launchTurnLocked ? 0.0F : (float) approachValue(bodyRoll, targetBank, BANK_RESPONSE_STEP);
         final float maxYawRate = switch (flightPhase) {
             case FLIGHT_PHASE_CLIMB -> MAX_CLIMB_YAW_RATE;
             case FLIGHT_PHASE_TERMINAL -> MAX_TERMINAL_YAW_RATE;
@@ -678,7 +983,7 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
             default -> CRUISE_YAW_DAMPING;
         };
         if (launchTurnLocked) {
-            yawRate = (float) approachValue(yawRate, 0.0D, YAW_MISMATCH_BRAKE);
+            yawRate = 0.0F;
         } else {
             final float yawAcceleration = (float) (Math.sin(Math.toRadians(nextRoll)) * yawAccelGain * Mth.clamp(flightSpeed / CRUISE_SPEED_TARGET, 0.45D, 1.2D) * turnAuthority);
             yawRate += yawAcceleration;
@@ -691,14 +996,21 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         }
         yawRate = Mth.clamp(yawRate, -maxYawRate, maxYawRate);
         final float nextYaw = launchTurnLocked ? launchLockedYaw : currentYaw + yawRate;
-        final float pitchError = desiredPitch - currentCoursePitch;
-        final float desiredPitchRate = Mth.clamp(pitchError * 0.08F, -pitchRateLimit, pitchRateLimit);
-        final float pitchRateResponse = flightPhase == FLIGHT_PHASE_TERMINAL ? PITCH_RATE_RESPONSE * 1.25F : PITCH_RATE_RESPONSE;
-        pitchRate = (float) approachValue(pitchRate, desiredPitchRate, pitchRateResponse);
-        if (Math.abs(pitchError) < 0.25F) {
-            pitchRate = (float) approachValue(pitchRate, 0.0D, pitchRateResponse * 0.5F);
+
+        final float nextPitch;
+        if (launchTurnLocked) {
+            pitchRate = 0.0F;
+            nextPitch = computeLaunchPitch(launchTicks);
+        } else {
+            final float pitchError = desiredPitch - currentCoursePitch;
+            final float desiredPitchRate = Mth.clamp(pitchError * 0.08F, -pitchRateLimit, pitchRateLimit);
+            final float pitchRateResponse = flightPhase == FLIGHT_PHASE_TERMINAL ? PITCH_RATE_RESPONSE * 1.25F : PITCH_RATE_RESPONSE;
+            pitchRate = (float) approachValue(pitchRate, desiredPitchRate, pitchRateResponse);
+            if (Math.abs(pitchError) < 0.25F) {
+                pitchRate = (float) approachValue(pitchRate, 0.0D, pitchRateResponse * 0.5F);
+            }
+            nextPitch = Mth.clamp(currentCoursePitch + pitchRate, -85.0F, 85.0F);
         }
-        final float nextPitch = Mth.clamp(currentCoursePitch + pitchRate, -85.0F, 85.0F);
         bodyRoll = nextRoll;
         setCourseOrientation(nextYaw, nextPitch);
 
@@ -716,7 +1028,7 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
             ? 0.0D
             : Mth.clamp(Math.sin(bankRadians) * slipLimit * Mth.clamp(flightSpeed / CRUISE_SPEED_TARGET, 0.45D, 1.25D) * turnAuthority, -slipLimit, slipLimit);
         final double slipStep = Math.abs(desiredLateralSlip) > Math.abs(lateralSlip) ? SLIP_BUILD_STEP : SLIP_DECAY_STEP;
-        lateralSlip = approachValue(lateralSlip, desiredLateralSlip, slipStep);
+        lateralSlip = launchTurnLocked ? 0.0D : approachValue(lateralSlip, desiredLateralSlip, slipStep);
         final Vec3 desiredMotion = forward.add(right.scale(lateralSlip)).normalize();
         final Vec3 previousMotion = getDeltaMovement().lengthSqr() > 1.0E-6D ? getDeltaMovement().normalize() : desiredMotion;
         final double steerBlend = launchTurnLocked
@@ -725,31 +1037,66 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         return previousMotion.lerp(desiredMotion, steerBlend).normalize().scale(flightSpeed);
     }
 
+    public static final float LAUNCH_STEEP_CLIMB_PITCH = -46.0F;
+
+    public float computeLaunchPitch(final int ticks) {
+        if (ticks <= 12) {
+            final float p = (float) ticks / 12.0F;
+            return Mth.lerp(p, -MODEL_BASE_PITCH_DEGREES, LAUNCH_STEEP_CLIMB_PITCH);
+        }
+        if (ticks <= 50) {
+            return LAUNCH_STEEP_CLIMB_PITCH;
+        }
+        if (ticks <= LAUNCH_RAIL_LOCK_TICKS) {
+            final float p = (float) (ticks - 50) / (float) (LAUNCH_RAIL_LOCK_TICKS - 50);
+            final float smoothP = p * p * (3.0F - 2.0F * p);
+            return Mth.lerp(smoothP, LAUNCH_STEEP_CLIMB_PITCH, 0.0F);
+        }
+        return 0.0F;
+    }
+
     private void advanceFlightPhase(final Vec3 impactTarget) {
         if (!hasTarget) {
+            return;
+        }
+        if (launchTicks <= LAUNCH_RAIL_LOCK_TICKS) {
             return;
         }
         if (flightPhase == FLIGHT_PHASE_CLIMB) {
             final Vec3 climbTarget = new Vec3(climbWaypointX, cruiseAltitude, climbWaypointZ);
             if (position().distanceTo(climbTarget) <= CLIMB_PHASE_THRESHOLD || getY() >= cruiseAltitude - 1.0D) {
+                cruiseAltitude = Math.max(cruiseAltitude, getY());
                 flightPhase = FLIGHT_PHASE_CRUISE;
             }
         } else if (flightPhase == FLIGHT_PHASE_CRUISE) {
+            final Vec3 forward = getCourseDirection();
+            final double peakSurfaceY = sampleAheadSurfaceY(position(), forward);
+            final double targetAltitude = peakSurfaceY + CRUISE_TERRAIN_CLEARANCE;
+            if (targetAltitude > cruiseAltitude) {
+                cruiseAltitude = approachValue(cruiseAltitude, targetAltitude, 0.45D);
+            } else {
+                cruiseAltitude = approachValue(cruiseAltitude, targetAltitude, 0.20D);
+            }
+
             if (isLaunchTurnLocked()) {
                 return;
             }
             final double dx = impactTarget.x - getX();
             final double dz = impactTarget.z - getZ();
             final double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-            final double verticalDrop = Math.max(getY() - impactTarget.y, 0.0D);
-            final double requiredDiveDistance = Math.max(
-                TERMINAL_HORIZONTAL_THRESHOLD,
-                verticalDrop / Math.tan(Math.toRadians(TERMINAL_DIVE_PITCH))
-            );
-            if (horizontalDistance <= requiredDiveDistance) {
+            if (horizontalDistance <= TERMINAL_APPROACH_DISTANCE) {
                 flightPhase = FLIGHT_PHASE_TERMINAL;
             }
         }
+    }
+
+    private double sampleAheadSurfaceY(final Vec3 currentPos, final Vec3 forwardDir) {
+        final double h0 = sampleSurfaceY(currentPos.x, currentPos.z);
+        final double h1 = sampleSurfaceY(currentPos.x + forwardDir.x * 40.0D, currentPos.z + forwardDir.z * 40.0D);
+        final double h2 = sampleSurfaceY(currentPos.x + forwardDir.x * 80.0D, currentPos.z + forwardDir.z * 80.0D);
+        final double h3 = sampleSurfaceY(currentPos.x + forwardDir.x * 130.0D, currentPos.z + forwardDir.z * 130.0D);
+        final double h4 = sampleSurfaceY(currentPos.x + forwardDir.x * 200.0D, currentPos.z + forwardDir.z * 200.0D);
+        return Math.max(h0, Math.max(Math.max(h1, h2), Math.max(h3, h4)));
     }
 
     private float computeAltitudeHoldPitch(final double altitudeError, final double responseDistance, final float maxPitch) {
@@ -761,7 +1108,7 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         final Vec3 delta = impactTarget.subtract(currentPos);
         final double horizontalDistance = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
         final float impactPitch = (float) (-(Mth.atan2(delta.y, Math.max(horizontalDistance, 1.0E-6D)) * Mth.RAD_TO_DEG));
-        return Mth.clamp(Math.max(impactPitch, TERMINAL_DIVE_PITCH), TERMINAL_DIVE_PITCH, TERMINAL_MAX_PITCH);
+        return Mth.clamp(impactPitch, 0.0F, TERMINAL_MAX_PITCH);
     }
 
     private boolean hasReachedTerrain() {
@@ -783,49 +1130,39 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         if (flightPhase == FLIGHT_PHASE_TERMINAL) {
             return false;
         }
-        final double dx = getX() - launchOriginX;
-        final double dz = getZ() - launchOriginZ;
-        return Math.sqrt(dx * dx + dz * dz) < INITIAL_STRAIGHT_DISTANCE;
+        return launchTicks <= LAUNCH_RAIL_LOCK_TICKS;
     }
 
-    private float getTurnAuthority() {
-        final double dx = getX() - launchOriginX;
-        final double dz = getZ() - launchOriginZ;
-        final double distanceFromLaunch = Math.sqrt(dx * dx + dz * dz);
-        if (distanceFromLaunch <= INITIAL_STRAIGHT_DISTANCE) {
+    public float getTurnAuthority() {
+        if (launchTicks <= LAUNCH_RAIL_LOCK_TICKS) {
             return 0.0F;
         }
-        final double distanceAuthority = Mth.clamp((distanceFromLaunch - INITIAL_STRAIGHT_DISTANCE) / TURN_AUTHORITY_RAMP_DISTANCE, 0.0D, 1.0D);
-        final double timeAuthority = launchTicks <= GUIDANCE_DELAY_TICKS
-            ? 0.0D
-            : Mth.clamp((double) (launchTicks - GUIDANCE_DELAY_TICKS) / (double) GUIDANCE_RAMP_TICKS, 0.0D, 1.0D);
-        return (float) (distanceAuthority * timeAuthority);
+        if (launchTicks >= LAUNCH_RAIL_LOCK_TICKS + BOOSTER_TRANSITION_TICKS) {
+            return 1.0F;
+        }
+        final float s = (float) (launchTicks - LAUNCH_RAIL_LOCK_TICKS) / (float) BOOSTER_TRANSITION_TICKS;
+        return s * s * (3.0F - 2.0F * s);
     }
 
     public float getVisualRoll(final float partialTick) {
         return Mth.lerp(partialTick, bodyRollO, bodyRoll);
     }
 
-    private double resolveSpeedTarget() {
+    public double resolveSpeedTarget() {
         if (launchTicks <= BOOSTER_KICK_TICKS) {
             return BOOSTER_PEAK_SPEED;
         }
         if (launchTicks <= BOOSTER_BURN_TICKS) {
-            final double sustainProgress = (double) (launchTicks - BOOSTER_KICK_TICKS) / (double) Math.max(BOOSTER_BURN_TICKS - BOOSTER_KICK_TICKS, 1);
-            return Mth.lerp(sustainProgress, BOOSTER_PEAK_SPEED, BOOSTER_SUSTAIN_SPEED);
-        }
-        if (launchTicks <= BOOSTER_BURN_TICKS + BOOSTER_DECAY_TICKS) {
-            final double decayProgress = (double) (launchTicks - BOOSTER_BURN_TICKS) / (double) BOOSTER_DECAY_TICKS;
-            return Mth.lerp(decayProgress, BOOSTER_SUSTAIN_SPEED, BOOSTER_SETTLE_SPEED);
+            return BOOSTER_SUSTAIN_SPEED;
         }
         final double phaseTarget = switch (flightPhase) {
-            case FLIGHT_PHASE_CLIMB -> CLIMB_SPEED_TARGET;
             case FLIGHT_PHASE_TERMINAL -> resolveTerminalSpeedTarget();
             default -> CRUISE_SPEED_TARGET;
         };
-        if (launchTicks <= BOOSTER_BURN_TICKS + BOOSTER_DECAY_TICKS + POST_BOOST_RECOVERY_TICKS) {
-            final double recoveryProgress = (double) (launchTicks - BOOSTER_BURN_TICKS - BOOSTER_DECAY_TICKS) / (double) POST_BOOST_RECOVERY_TICKS;
-            return Mth.lerp(Mth.clamp(recoveryProgress, 0.0D, 1.0D), BOOSTER_SETTLE_SPEED, phaseTarget);
+        if (launchTicks <= BOOSTER_BURN_TICKS + BOOSTER_TRANSITION_TICKS) {
+            final double s = (double) (launchTicks - BOOSTER_BURN_TICKS) / (double) BOOSTER_TRANSITION_TICKS;
+            final double h = s * s * (3.0D - 2.0D * s);
+            return Mth.lerp(h, BOOSTER_SUSTAIN_SPEED, phaseTarget);
         }
         return phaseTarget;
     }
@@ -837,69 +1174,27 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         if (launchTicks <= BOOSTER_BURN_TICKS) {
             return BOOSTER_SUSTAIN_STEP;
         }
-        if (launchTicks <= BOOSTER_BURN_TICKS + BOOSTER_DECAY_TICKS) {
-            return BOOSTER_DECAY_STEP;
-        }
-        if (launchTicks <= BOOSTER_BURN_TICKS + BOOSTER_DECAY_TICKS + POST_BOOST_RECOVERY_TICKS) {
-            return POST_BOOST_ACCEL_STEP;
+        if (launchTicks <= BOOSTER_BURN_TICKS + BOOSTER_TRANSITION_TICKS) {
+            return BOOSTER_TRANSITION_STEP;
         }
         return Mth.clamp(Math.abs(speedTarget - flightSpeed) * 0.09D, MIN_SPEED_STEP, MAX_SPEED_STEP);
     }
 
     private double resolveTerminalSpeedTarget() {
-        final double diveFactor = Mth.clamp((-getCoursePitch() - TERMINAL_DIVE_PITCH) / 25.0D, 0.0D, 1.0D);
-        return Mth.lerp(diveFactor, TERMINAL_SPEED_TARGET, TERMINAL_SPEED_TARGET + 0.55D);
+        final double diveFactor = Mth.clamp(getCoursePitch() / 25.0D, 0.0D, 1.0D);
+        return Mth.lerp(diveFactor, TERMINAL_SPEED_TARGET, TERMINAL_SPEED_TARGET + 0.35D);
     }
 
     private void spawnExhaustParticles() {
-        if (!(level() instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
-        final Vec3 forward = getCourseDirection();
-        final Vec3 right = Vec3.directionFromRotation(0.0F, getYRot() + MODEL_FORWARD_YAW_OFFSET - 90.0F).normalize();
-        final Vec3 exhaustCenter = position()
-            .subtract(forward.scale(EXHAUST_REAR_OFFSET))
-            .add(0.0D, EXHAUST_VERTICAL_OFFSET, 0.0D);
-        final Vec3 exhaustVelocity = forward.scale(-0.42D).add(getDeltaMovement().scale(0.08D));
-
-        if (launchTicks <= BOOSTER_BURN_TICKS) {
-            final double rollFactor = Math.max(0.35D, Math.abs(Math.sin(Math.toRadians(bodyRoll))));
-            final double plumeSpread = 0.16D + rollFactor * 0.1D;
-            spawnExhaustParticleBurst(serverLevel, BOOSTER_SMOKE_PARTICLE, exhaustCenter, right, exhaustVelocity.scale(0.85D), 6, plumeSpread, 0.05D);
-            spawnExhaustParticleBurst(serverLevel, ParticleTypes.CLOUD, exhaustCenter, right, exhaustVelocity.scale(0.62D), 4, plumeSpread + 0.06D, 0.04D);
-            if ((tickCount & 1) == 0) {
-                spawnExhaustParticleBurst(serverLevel, ParticleTypes.CLOUD, exhaustCenter, right, exhaustVelocity.scale(0.35D), 3, plumeSpread + 0.1D, 0.03D);
-            }
-        }
+        // Contrails are rendered locally on client-side via Fp5ClientVfx and DroneParticleManager
+        // using OCP textures up to 512m render distance without server network packet bottlenecks.
     }
 
-    private void spawnExhaustParticleBurst(final ServerLevel serverLevel,
-                                           final ParticleOptions particle,
-                                           final Vec3 exhaustCenter,
-                                           final Vec3 right,
-                                           final Vec3 baseVelocity,
-                                           final int count,
-                                           final double sideSpread,
-                                           final double randomVelocitySpread) {
-        for (int i = 0; i < count; ++i) {
-            final double lateral = (random.nextDouble() - 0.5D) * 2.0D * Math.min(sideSpread, EXHAUST_SIDE_SPREAD);
-            final double vertical = (random.nextDouble() - 0.5D) * 0.12D;
-            final Vec3 spawnPos = exhaustCenter.add(right.scale(lateral)).add(0.0D, vertical, 0.0D);
-            final Vec3 velocity = baseVelocity.add(
-                (random.nextDouble() - 0.5D) * randomVelocitySpread,
-                (random.nextDouble() - 0.5D) * randomVelocitySpread,
-                (random.nextDouble() - 0.5D) * randomVelocitySpread
-            );
-            serverLevel.sendParticles(particle, spawnPos.x, spawnPos.y, spawnPos.z, 1, velocity.x, velocity.y, velocity.z, 0.0D);
-        }
-    }
-
-    private float getCoursePitch() {
+    public float getCoursePitch() {
         return getXRot() - MODEL_BASE_PITCH_DEGREES;
     }
 
-    private Vec3 getCourseDirection() {
+    public Vec3 getCourseDirection() {
         final float motionYaw = getYRot() + MODEL_FORWARD_YAW_OFFSET;
         final Vec3 forward = Vec3.directionFromRotation(getCoursePitch(), motionYaw);
         return forward.lengthSqr() > 1.0E-6D ? forward.normalize() : Vec3.directionFromRotation(-MODEL_BASE_PITCH_DEGREES, motionYaw).normalize();
@@ -913,28 +1208,30 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
     }
 
     private void detonate(final Vec3 impactPos) {
+        detonate(impactPos, null);
+    }
+
+    private void detonate(final Vec3 impactPos, @javax.annotation.Nullable final Vec3 explicitNormal) {
         if (level().isClientSide() || isRemoved()) {
             return;
         }
         dropItemOnRemove = false;
         launched = false;
         entityData.set(DATA_ON_LAUNCHER, false);
+        entityData.set(DATA_LAUNCHED, false);
+        entityData.set(DATA_BOOSTER_ACTIVE, false);
         mountedLauncherId = -1;
         mountedLauncherUuid = null;
         setPos(impactPos.x, impactPos.y, impactPos.z);
-        spawnTntEffect();
+        spawnTntEffect(explicitNormal);
         discard();
     }
 
-    private void spawnTntEffect() {
+    private void spawnTntEffect(@javax.annotation.Nullable final Vec3 explicitNormal) {
         if (!(level() instanceof ServerLevel serverLevel)) {
             return;
         }
-        final PrimedTnt tnt = new PrimedTnt(serverLevel, getX(), getY(), getZ(), null);
-        tnt.setFuse(0);
-        serverLevel.addFreshEntity(tnt);
-        serverLevel.explode(tnt, getX(), getY(), getZ(), TNT_POWER, Level.ExplosionInteraction.TNT);
-        tnt.discard();
+        DroneExplosionEffects.afterFlamingoExplosion(serverLevel, this, null, getDeltaMovement(), explicitNormal);
     }
 
     private void dropAsItem() {

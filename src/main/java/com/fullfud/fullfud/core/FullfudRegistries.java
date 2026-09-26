@@ -8,6 +8,7 @@ import com.fullfud.fullfud.common.entity.Fp5LauncherEntity;
 import com.fullfud.fullfud.common.entity.RebEmitterEntity;
 import com.fullfud.fullfud.common.entity.ShahedColor;
 import com.fullfud.fullfud.common.entity.ShahedDroneEntity;
+import com.fullfud.fullfud.common.entity.Shahed238DroneEntity;
 import com.fullfud.fullfud.common.entity.ShahedLauncherEntity;
 import com.fullfud.fullfud.common.entity.drone.DronePreset;
 import com.fullfud.fullfud.common.item.MonitorItem;
@@ -58,16 +59,24 @@ public final class FullfudRegistries {
         new ShahedDroneItem(new Item.Properties().stacksTo(1), ShahedColor.WHITE)
     );
 
-    public static final RegistryObject<Item> SHAHED_BLACK_ITEM = ITEMS.register("shahed_136_black", () ->
-        new ShahedDroneItem(new Item.Properties().stacksTo(1), ShahedColor.BLACK)
-    );
-
     public static final RegistryObject<Item> SHAHED_ITEM_SLOW = ITEMS.register("shahed_136_slow", () ->
         new ShahedDroneItem(new Item.Properties().stacksTo(1), ShahedColor.WHITE, 0.5D)
     );
 
-    public static final RegistryObject<Item> SHAHED_BLACK_ITEM_SLOW = ITEMS.register("shahed_136_black_slow", () ->
-        new ShahedDroneItem(new Item.Properties().stacksTo(1), ShahedColor.BLACK, 0.5D)
+    public static final RegistryObject<Item> SHAHED_238_ITEM = ITEMS.register("shahed_238", () ->
+        new ShahedDroneItem(new Item.Properties().stacksTo(1), ShahedColor.WHITE, FullfudRegistries.SHAHED_238_ENTITY)
+    );
+
+    public static final RegistryObject<Item> SHAHED_238_BLACK_ITEM = ITEMS.register("shahed_238_black", () ->
+        new ShahedDroneItem(new Item.Properties().stacksTo(1), ShahedColor.BLACK, FullfudRegistries.SHAHED_238_ENTITY)
+    );
+
+    public static final RegistryObject<Item> SHAHED_238_ITEM_SLOW = ITEMS.register("shahed_238_slow", () ->
+        new ShahedDroneItem(new Item.Properties().stacksTo(1), ShahedColor.WHITE, 0.5D, FullfudRegistries.SHAHED_238_ENTITY)
+    );
+
+    public static final RegistryObject<Item> SHAHED_238_BLACK_ITEM_SLOW = ITEMS.register("shahed_238_black_slow", () ->
+        new ShahedDroneItem(new Item.Properties().stacksTo(1), ShahedColor.BLACK, 0.5D, FullfudRegistries.SHAHED_238_ENTITY)
     );
 
     public static final RegistryObject<Item> FPV_DRONE_ITEM = ITEMS.register("fpv_drone", () ->
@@ -141,6 +150,15 @@ public final class FullfudRegistries {
             .updateInterval(1)
             .setShouldReceiveVelocityUpdates(true)
             .build(resource("shahed_136").toString())
+    );
+
+    public static final RegistryObject<EntityType<Shahed238DroneEntity>> SHAHED_238_ENTITY = ENTITY_TYPES.register("shahed_238", () ->
+        EntityType.Builder.<Shahed238DroneEntity>of(Shahed238DroneEntity::new, MobCategory.MISC)
+            .sized(3.0F, 1.0F)
+            .clientTrackingRange(2000)
+            .updateInterval(1)
+            .setShouldReceiveVelocityUpdates(true)
+            .build(resource("shahed_238").toString())
     );
 
     public static final RegistryObject<EntityType<FpvDroneEntity>> FPV_DRONE_ENTITY = ENTITY_TYPES.register("fpv_drone", () ->
@@ -231,6 +249,29 @@ public final class FullfudRegistries {
         () -> SoundEvent.createVariableRangeEvent(resource("fpv.engine_stop"))
     );
 
+    public static final RegistryObject<SoundEvent> FP5_LAUNCH_BOOST = SOUND_EVENTS.register("fp5.launch_boost",
+        () -> SoundEvent.createVariableRangeEvent(resource("fp5.launch_boost"))
+    );
+    public static final RegistryObject<SoundEvent> FP5_BOOSTER_LOOP = SOUND_EVENTS.register("fp5.booster_loop",
+        () -> SoundEvent.createVariableRangeEvent(resource("fp5.booster_loop"))
+    );
+    public static final RegistryObject<SoundEvent> FP5_ENGINE_LOOP = SOUND_EVENTS.register("fp5.engine_loop",
+        () -> SoundEvent.createVariableRangeEvent(resource("fp5.engine_loop"))
+    );
+    public static final RegistryObject<SoundEvent> FP5_ENGINE_DISTANT = SOUND_EVENTS.register("fp5.engine_distant",
+        () -> SoundEvent.createVariableRangeEvent(resource("fp5.engine_distant"))
+    );
+    public static final RegistryObject<SoundEvent> FP5_FLYBY = SOUND_EVENTS.register("fp5.flyby",
+        () -> SoundEvent.createVariableRangeEvent(resource("fp5.flyby"))
+    );
+    public static final RegistryObject<SoundEvent> FP5_CRUISE_WHISTLE = SOUND_EVENTS.register("fp5.cruise_whistle",
+        () -> SoundEvent.createVariableRangeEvent(resource("fp5.cruise_whistle"))
+    );
+    public static final RegistryObject<SoundEvent> FP5_CRUISE_RUMBLE = SOUND_EVENTS.register("fp5.cruise_rumble",
+        () -> SoundEvent.createVariableRangeEvent(resource("fp5.cruise_rumble"))
+    );
+
+
     public static final RegistryObject<SoundEvent> EXPLOSION_CLOSE = SOUND_EVENTS.register("explosion_close",
         () -> SoundEvent.createVariableRangeEvent(resource("explosion_close"))
     );
@@ -245,6 +286,30 @@ public final class FullfudRegistries {
     );
     public static final RegistryObject<SoundEvent> SHRAPNEL_HIT = SOUND_EVENTS.register("shrapnel_hit",
         () -> SoundEvent.createVariableRangeEvent(resource("shrapnel_hit"))
+    );
+    public static final RegistryObject<SoundEvent> EXPLOSION_OCP_HEAVY = SOUND_EVENTS.register("explosion_ocp_heavy",
+        () -> SoundEvent.createVariableRangeEvent(resource("explosion_ocp_heavy"))
+    );
+    public static final RegistryObject<SoundEvent> EXPLOSION_OCP_DISTANT = SOUND_EVENTS.register("explosion_ocp_distant",
+        () -> SoundEvent.createVariableRangeEvent(resource("explosion_ocp_distant"))
+    );
+    public static final RegistryObject<SoundEvent> DEBRIS_SETTLE_DIRT = SOUND_EVENTS.register("debris_settle_dirt",
+        () -> SoundEvent.createVariableRangeEvent(resource("debris_settle_dirt"))
+    );
+    public static final RegistryObject<SoundEvent> DEBRIS_SETTLE_STONE = SOUND_EVENTS.register("debris_settle_stone",
+        () -> SoundEvent.createVariableRangeEvent(resource("debris_settle_stone"))
+    );
+    public static final RegistryObject<SoundEvent> DEBRIS_SETTLE_SAND = SOUND_EVENTS.register("debris_settle_sand",
+        () -> SoundEvent.createVariableRangeEvent(resource("debris_settle_sand"))
+    );
+    public static final RegistryObject<SoundEvent> DEBRIS_SETTLE_WATER = SOUND_EVENTS.register("debris_settle_water",
+        () -> SoundEvent.createVariableRangeEvent(resource("debris_settle_water"))
+    );
+    public static final RegistryObject<SoundEvent> DEBRIS_SETTLE_WOOD = SOUND_EVENTS.register("debris_settle_wood",
+        () -> SoundEvent.createVariableRangeEvent(resource("debris_settle_wood"))
+    );
+    public static final RegistryObject<SoundEvent> FIRE_CRACKLE_OCP = SOUND_EVENTS.register("fire_crackle_ocp",
+        () -> SoundEvent.createVariableRangeEvent(resource("fire_crackle_ocp"))
     );
 
     public static void register(final IEventBus modEventBus) {

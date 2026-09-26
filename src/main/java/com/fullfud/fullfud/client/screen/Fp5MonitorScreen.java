@@ -1,8 +1,10 @@
 package com.fullfud.fullfud.client.screen;
 
+import com.fullfud.fullfud.common.entity.Fp5FlamingoEntity;
 import com.fullfud.fullfud.common.menu.Fp5MonitorMenu;
 import com.fullfud.fullfud.core.network.FullfudNetwork;
 import com.fullfud.fullfud.core.network.packet.Fp5LaunchPacket;
+import com.fullfud.fullfud.core.network.packet.Fp5TargetPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -121,15 +123,34 @@ public class Fp5MonitorScreen extends AbstractContainerScreen<Fp5MonitorMenu> {
         fillOutlinedRect(graphics, fieldX - 4, firstFieldY + (FIELD_HEIGHT + FIELD_GAP) * 2 - 1, fieldWidth + 8, FIELD_HEIGHT, FIELD_FILL, FIELD_BORDER);
 
         drawShadowText(graphics, title, panelX + PANEL_PADDING, panelY + 18, TEXT_COLOR);
-        drawShadowText(
-            graphics,
-            Component.translatable(menu.isLaunched()
-                ? "screen.fullfud.fp5_monitor.state_in_flight"
-                : "screen.fullfud.fp5_monitor.state_ready"),
-            panelX + PANEL_PADDING,
-            panelY + 32,
-            TEXT_MUTED
-        );
+        final double targetDist = calculateTargetDistance();
+        if (menu.isLaunched()) {
+            drawShadowText(graphics, Component.translatable("screen.fullfud.fp5_monitor.state_in_flight"), panelX + PANEL_PADDING, panelY + 32, TEXT_MUTED);
+        } else if (targetDist >= 0.0D && targetDist < Fp5FlamingoEntity.MIN_LAUNCH_DISTANCE) {
+            drawShadowText(
+                graphics,
+                Component.translatable("screen.fullfud.fp5_monitor.too_close", (int) Math.round(targetDist), (int) Math.round(Fp5FlamingoEntity.MIN_LAUNCH_DISTANCE)),
+                panelX + PANEL_PADDING,
+                panelY + 32,
+                0xFFFF4444
+            );
+        } else if (targetDist >= Fp5FlamingoEntity.MIN_LAUNCH_DISTANCE) {
+            drawShadowText(
+                graphics,
+                Component.translatable("screen.fullfud.fp5_monitor.distance", (int) Math.round(targetDist)),
+                panelX + PANEL_PADDING,
+                panelY + 32,
+                0xFF55FF55
+            );
+        } else {
+            drawShadowText(
+                graphics,
+                Component.translatable("screen.fullfud.fp5_monitor.state_ready"),
+                panelX + PANEL_PADDING,
+                panelY + 32,
+                TEXT_MUTED
+            );
+        }
         drawShadowText(graphics, Component.literal("TARGET"), panelX + PANEL_PADDING, contentY + 10, TEXT_MUTED);
 
         drawShadowText(graphics, Component.translatable("screen.fullfud.fp5_monitor.coord_x"), labelX, firstFieldY + 4, TEXT_COLOR);
@@ -162,6 +183,17 @@ public class Fp5MonitorScreen extends AbstractContainerScreen<Fp5MonitorMenu> {
         return false;
     }
 
+    @Override
+    public void onClose() {
+        final Integer x = parseField(xField);
+        final Integer y = parseField(yField);
+        final Integer z = parseField(zField);
+        if (x != null && y != null && z != null && menu.getFlamingoId() != null && !menu.isLaunched()) {
+            FullfudNetwork.getChannel().sendToServer(new Fp5TargetPacket(menu.getFlamingoId(), x, y, z));
+        }
+        super.onClose();
+    }
+
     private EditBox createField(final int x, final int y, final int width, final int value) {
         final EditBox field = new EditBox(font, x, y, width, FIELD_HEIGHT - 2, Component.empty());
         field.setValue(Integer.toString(value));
@@ -174,8 +206,25 @@ public class Fp5MonitorScreen extends AbstractContainerScreen<Fp5MonitorMenu> {
         return field;
     }
 
+    private double calculateTargetDistance() {
+        final Integer targetX = parseField(xField);
+        final Integer targetZ = parseField(zField);
+        if (targetX == null || targetZ == null) {
+            return -1.0D;
+        }
+        final double dx = (double) targetX + 0.5D - menu.getFlamingoX();
+        final double dz = (double) targetZ + 0.5D - menu.getFlamingoZ();
+        return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    private boolean isTargetTooClose() {
+        final double dist = calculateTargetDistance();
+        return dist >= 0.0D && dist < Fp5FlamingoEntity.MIN_LAUNCH_DISTANCE;
+    }
+
     private void updateLaunchButton() {
-        launchButton.active = !menu.isLaunched() && parseField(xField) != null && parseField(yField) != null && parseField(zField) != null;
+        final boolean coordsValid = parseField(xField) != null && parseField(yField) != null && parseField(zField) != null;
+        launchButton.active = !menu.isLaunched() && coordsValid && !isTargetTooClose();
     }
 
     private void launch() {

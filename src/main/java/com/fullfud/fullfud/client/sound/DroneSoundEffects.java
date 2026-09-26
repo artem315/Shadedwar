@@ -17,7 +17,9 @@ public final class DroneSoundEffects {
 
     public enum SoundProfile {
         FPV(0.035D, 4.0D, 1.2D, 0.08D, 0.12F, 0.75D, 28.0D, 140.0D, 0.38F, 0.85D),
-        SHAHED(0.08D, 2.6D, 1.05D, 0.18D, 0.3F, 0.9D, 80.0D, 420.0D, 0.6F, 0.65D);
+        SHAHED(0.08D, 2.6D, 1.05D, 0.18D, 0.3F, 0.9D, 80.0D, 420.0D, 0.6F, 0.65D),
+        SHAHED_238(0.05D, 3.0D, 1.15D, 0.10D, 0.18F, 0.85D, 50.0D, 380.0D, 0.35F, 0.75D),
+        FP5_FLAMINGO(0.04D, 3.2D, 1.25D, 0.08D, 0.12F, 0.80D, 40.0D, 350.0D, 0.22F, 0.70D);
 
         private final double nearFieldRatio;
         private final double rolloffScale;

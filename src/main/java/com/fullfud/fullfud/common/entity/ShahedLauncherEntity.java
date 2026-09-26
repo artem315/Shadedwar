@@ -76,7 +76,7 @@ public class ShahedLauncherEntity extends Entity implements GeoEntity {
             if (hasDrone()) {
                 return InteractionResult.FAIL;
             }
-            final ShahedDroneEntity drone = FullfudRegistries.SHAHED_ENTITY.get().create(serverLevel);
+            final ShahedDroneEntity drone = droneItem.createDrone(serverLevel);
             if (drone == null) {
                 return InteractionResult.PASS;
             }

@@ -19,6 +19,9 @@ public class Fp5MonitorMenu extends AbstractContainerMenu {
     private final int flamingoEntityId;
     private final BlockPos targetPos;
     private final boolean launched;
+    private final double flamingoX;
+    private final double flamingoY;
+    private final double flamingoZ;
 
     public Fp5MonitorMenu(final int containerId, final Inventory inventory, final FriendlyByteBuf buffer) {
         this(
@@ -27,7 +30,10 @@ public class Fp5MonitorMenu extends AbstractContainerMenu {
             readFlamingoUuid(buffer),
             readEntityId(buffer),
             readTargetPos(buffer),
-            readLaunched(buffer)
+            readLaunched(buffer),
+            readDoubleOrDefault(buffer, 0.0D),
+            readDoubleOrDefault(buffer, 0.0D),
+            readDoubleOrDefault(buffer, 0.0D)
         );
     }
 
@@ -39,11 +45,28 @@ public class Fp5MonitorMenu extends AbstractContainerMenu {
         final BlockPos targetPos,
         final boolean launched
     ) {
+        this(containerId, inventory, flamingoId, flamingoEntityId, targetPos, launched, 0.0D, 0.0D, 0.0D);
+    }
+
+    public Fp5MonitorMenu(
+        final int containerId,
+        final Inventory inventory,
+        final UUID flamingoId,
+        final int flamingoEntityId,
+        final BlockPos targetPos,
+        final boolean launched,
+        final double flamingoX,
+        final double flamingoY,
+        final double flamingoZ
+    ) {
         super(FullfudRegistries.FP5_MONITOR_MENU.get(), containerId);
         this.flamingoId = flamingoId;
         this.flamingoEntityId = flamingoEntityId;
         this.targetPos = targetPos == null ? BlockPos.ZERO : targetPos.immutable();
         this.launched = launched;
+        this.flamingoX = flamingoX;
+        this.flamingoY = flamingoY;
+        this.flamingoZ = flamingoZ;
     }
 
     public UUID getFlamingoId() {
@@ -56,6 +79,18 @@ public class Fp5MonitorMenu extends AbstractContainerMenu {
 
     public BlockPos getTargetPos() {
         return targetPos;
+    }
+
+    public double getFlamingoX() {
+        return flamingoX;
+    }
+
+    public double getFlamingoY() {
+        return flamingoY;
+    }
+
+    public double getFlamingoZ() {
+        return flamingoZ;
     }
 
     public boolean isLaunched() {
@@ -125,5 +160,12 @@ public class Fp5MonitorMenu extends AbstractContainerMenu {
             return false;
         }
         return buffer.readBoolean();
+    }
+
+    private static double readDoubleOrDefault(final FriendlyByteBuf buffer, final double defaultValue) {
+        if (buffer == null || buffer.readableBytes() < 8) {
+            return defaultValue;
+        }
+        return buffer.readDouble();
     }
 }

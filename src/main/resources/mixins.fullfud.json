@@ -6,6 +6,7 @@
   "refmap": "mixins.fullfud.refmap.json",
   "client": [
     "client.ChannelAccessor",
+    "client.ChannelMixin",
     "client.SoundEngineAccessor",
     "client.SoundManagerAccessor"
   ],

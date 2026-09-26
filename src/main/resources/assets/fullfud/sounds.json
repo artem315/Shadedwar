@@ -1,4 +1,4 @@
-﻿{
+{
   "shahed.engine_start": {
     "sounds": [
       {
@@ -130,6 +130,114 @@
       { "name": "fullfud:shrapnel_6" },
       { "name": "fullfud:shrapnel_7" },
       { "name": "fullfud:shrapnel_8" }
+    ]
+  },
+  "explosion_ocp_heavy": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "mtsofficialpack:explosion_heavy1", "attenuation_distance": 350 },
+      { "name": "mtsofficialpack:explosion1", "attenuation_distance": 350 },
+      { "name": "mtsofficialpack:explosion2", "attenuation_distance": 350 },
+      { "name": "mtsofficialpack:explosion3", "attenuation_distance": 350 },
+      { "name": "mtsofficialpack:explosion4", "attenuation_distance": 350 }
+    ]
+  },
+  "explosion_ocp_distant": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "mtsofficialpack:explosion_distant_heavy", "attenuation_distance": 1200 },
+      { "name": "mtsofficialpack:explosion_distant_heavy1", "attenuation_distance": 1200 },
+      { "name": "mtsofficialpack:explosion_distant_heavy2", "attenuation_distance": 1200 }
+    ]
+  },
+  "debris_settle_dirt": {
+    "category": "neutral",
+    "sounds": [
+      "mtsofficialpack:debrissettle_dirtsmall0",
+      "mtsofficialpack:debrissettle_dirtsmall1",
+      "mtsofficialpack:debrissettle_dirtsmall2",
+      "mtsofficialpack:debrissettle_dirtsmall3"
+    ]
+  },
+  "debris_settle_stone": {
+    "category": "neutral",
+    "sounds": [
+      "mtsofficialpack:debrissettle_stonesmall0",
+      "mtsofficialpack:debrissettle_stonesmall1",
+      "mtsofficialpack:debrissettle_stonesmall2",
+      "mtsofficialpack:debrissettle_stonesmall3"
+    ]
+  },
+  "debris_settle_sand": {
+    "category": "neutral",
+    "sounds": [
+      "mtsofficialpack:debrissettle_sandsmall0",
+      "mtsofficialpack:debrissettle_sandsmall1",
+      "mtsofficialpack:debrissettle_sandsmall2"
+    ]
+  },
+  "debris_settle_water": {
+    "category": "neutral",
+    "sounds": [
+      "mtsofficialpack:debrissettle_water0",
+      "mtsofficialpack:debrissettle_water1"
+    ]
+  },
+  "debris_settle_wood": {
+    "category": "neutral",
+    "sounds": [
+      "mtsofficialpack:debrissettle_woodlarge0",
+      "mtsofficialpack:debrissettle_woodlarge1",
+      "mtsofficialpack:debrissettle_woodlarge2"
+    ]
+  },
+  "fire_crackle_ocp": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "mtsofficialpack:crashfire", "attenuation_distance": 64 }
+    ]
+  },
+  "fp5.launch_boost": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "fullfud:fp5_launch_boost_01", "attenuation_distance": 500 },
+      { "name": "fullfud:fp5_launch_boost_02", "attenuation_distance": 500 }
+    ]
+  },
+  "fp5.booster_loop": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "fullfud:fp5_booster_loop", "attenuation_distance": 600, "stream": false }
+    ]
+  },
+  "fp5.engine_loop": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "fullfud:fp5_cruise_loop", "attenuation_distance": 500, "stream": false }
+    ]
+  },
+  "fp5.engine_distant": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "fullfud:fp5_cruise_loop", "attenuation_distance": 800, "stream": false }
+    ]
+  },
+  "fp5.flyby": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "fullfud:fp5_flyby", "attenuation_distance": 600, "stream": false }
+    ]
+  },
+  "fp5.cruise_whistle": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "fullfud:fp5_cruise_whistle", "attenuation_distance": 600, "stream": false }
+    ]
+  },
+  "fp5.cruise_rumble": {
+    "category": "neutral",
+    "sounds": [
+      { "name": "fullfud:fp5_cruise_rumble", "attenuation_distance": 600, "stream": false }
     ]
   }
 }

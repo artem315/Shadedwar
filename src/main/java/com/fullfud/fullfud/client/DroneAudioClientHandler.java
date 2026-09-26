@@ -22,6 +22,7 @@ import java.util.UUID;
 public final class DroneAudioClientHandler {
     public static final byte TYPE_FPV = 0;
     public static final byte TYPE_SHAHED = 1;
+    public static final byte TYPE_SHAHED_238 = 2;
 
     public static final byte KIND_START = 1;
     public static final byte KIND_STOP = 2;
@@ -57,6 +58,7 @@ public final class DroneAudioClientHandler {
         final SoundEvent event = switch (packet.droneType()) {
             case TYPE_FPV -> FullfudRegistries.FPV_ENGINE_LOOP.get();
             case TYPE_SHAHED -> FullfudRegistries.SHAHED_ENGINE_LOOP.get();
+            case TYPE_SHAHED_238 -> FullfudRegistries.FP5_BOOSTER_LOOP.get();
             default -> null;
         };
         if (event == null) {
@@ -142,7 +144,7 @@ public final class DroneAudioClientHandler {
         }
         final boolean muteWhenLoaded = switch (droneType) {
             case TYPE_FPV -> FullfudClientConfig.CLIENT.droneAudioMuteRemoteFpvWhenLoaded.get();
-            case TYPE_SHAHED -> FullfudClientConfig.CLIENT.droneAudioMuteRemoteShahedWhenLoaded.get();
+            case TYPE_SHAHED, TYPE_SHAHED_238 -> FullfudClientConfig.CLIENT.droneAudioMuteRemoteShahedWhenLoaded.get();
             default -> false;
         };
         return muteWhenLoaded && isDroneEntityPresent(mc, droneId);
@@ -154,7 +156,7 @@ public final class DroneAudioClientHandler {
         }
         final RemoteDroneLoopSoundInstance existing = LOOPS.remove(droneId);
         if (existing != null) {
-            existing.forceStop();
+            existing.fadeOut();
         }
     }
 

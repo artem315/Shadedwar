@@ -8,7 +8,7 @@ import net.minecraftforge.fml.common.Mod;
 @Mod(LatticeCommon.MOD_ID)
 public final class LatticeCommon {
 
-    public static final String MOD_ID = "lattice";
+    public static final String MOD_ID = "lazurite_lattice";
 
     public LatticeCommon() {
         Networking.init();

@@ -131,7 +131,12 @@ public class Fp5LauncherEntity extends Entity implements GeoEntity {
         if (level().isClientSide || !isAlive()) {
             return false;
         }
-        dropStoredFlamingoAsItem();
+        final Fp5FlamingoEntity mounted = getStoredFlamingo();
+        if (mounted != null) {
+            mounted.detonateMounted();
+            storedFlamingoUuid = null;
+            storedFlamingoId = -1;
+        }
         dropSelf();
         discard();
         return true;

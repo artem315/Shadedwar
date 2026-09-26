@@ -18,7 +18,20 @@ public final class Fp5NetworkHandlers {
             return;
         }
         final BlockPos targetPos = new BlockPos(packet.targetX(), packet.targetY(), packet.targetZ());
-        findFlamingo(sender, packet.flamingoId()).ifPresent(flamingo -> flamingo.launchToCoordinates(targetPos));
+        findFlamingo(sender, packet.flamingoId()).ifPresent(flamingo -> {
+            final double dx = targetPos.getX() + 0.5D - flamingo.getX();
+            final double dz = targetPos.getZ() + 0.5D - flamingo.getZ();
+            final double dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist < Fp5FlamingoEntity.MIN_LAUNCH_DISTANCE) {
+                sender.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.fullfud.fp5.target_too_close",
+                    (int) Math.round(dist),
+                    (int) Math.round(Fp5FlamingoEntity.MIN_LAUNCH_DISTANCE)
+                ));
+                return;
+            }
+            flamingo.launchToCoordinates(targetPos);
+        });
     }
 
     private static Optional<Fp5FlamingoEntity> findFlamingo(final ServerPlayer sender, final UUID flamingoId) {

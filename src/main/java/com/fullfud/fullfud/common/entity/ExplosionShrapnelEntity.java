@@ -25,7 +25,7 @@ import net.minecraftforge.common.Tags;
 import net.minecraftforge.network.NetworkHooks;
 
 public class ExplosionShrapnelEntity extends ThrowableItemProjectile {
-    private static final int MAX_SPAWN_PER_EXPLOSION = 160;
+    private static final int MAX_SPAWN_PER_EXPLOSION = 64;
     private static final int START_BLOCK_GRACE_TICKS = 2;
     private static final double START_BLOCK_GRACE_RANGE_SQR = 1.5D * 1.5D;
 

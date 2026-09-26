@@ -4,14 +4,17 @@ import com.fullfud.fullfud.client.render.Fp5FlamingoRenderer;
 import com.fullfud.fullfud.client.render.RebEmitterRenderer;
 import com.fullfud.fullfud.client.render.Fp5LauncherRenderer;
 import com.fullfud.fullfud.client.render.ShahedDroneRenderer;
+import com.fullfud.fullfud.client.render.Shahed238DroneRenderer;
 import com.fullfud.fullfud.client.render.ShahedLauncherRenderer;
 import com.fullfud.fullfud.client.screen.Fp5MonitorScreen;
 import com.fullfud.fullfud.client.screen.ShahedMonitorScreen;
 import com.fullfud.fullfud.client.sound.DroneSoundEffects;
 import com.fullfud.fullfud.client.sound.ShahedDiveLoopSoundInstance;
 import com.fullfud.fullfud.client.sound.ShahedEngineLoopSoundInstance;
+import com.fullfud.fullfud.client.sound.Shahed238EngineLoopSoundInstance;
 import com.fullfud.fullfud.common.entity.RebEmitterEntity;
 import com.fullfud.fullfud.common.entity.ShahedDroneEntity;
+import com.fullfud.fullfud.common.entity.Shahed238DroneEntity;
 import com.fullfud.fullfud.common.item.MonitorItem;
 import com.fullfud.fullfud.common.item.RebBatteryItem;
 import com.fullfud.fullfud.core.FullfudRegistries;
@@ -92,6 +95,7 @@ public final class ShahedClientHandler {
     private static final Map<UUID, EngineAudioController> ENGINE_AUDIO = new HashMap<>();
     private static final Map<UUID, GhostState> GHOST_STATES = new HashMap<>();
     private static final Map<UUID, ShahedDroneEntity> GHOST_ENTITIES = new HashMap<>();
+    private static final Map<UUID, Vec3> GHOST_NOZZLE_ANCHORS = new HashMap<>();
     private static final int GHOST_INTERPOLATION_MAX_STEPS = 10;
     private static boolean localPlayerStateCaptured;
     private static boolean localPlayerSilent;
@@ -121,6 +125,7 @@ public final class ShahedClientHandler {
 
     public static void onRegisterRenderers(final EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(FullfudRegistries.SHAHED_ENTITY.get(), ShahedDroneRenderer::new);
+        event.registerEntityRenderer(FullfudRegistries.SHAHED_238_ENTITY.get(), Shahed238DroneRenderer::new);
         event.registerEntityRenderer(FullfudRegistries.SHAHED_LAUNCHER_ENTITY.get(), ShahedLauncherRenderer::new);
         event.registerEntityRenderer(FullfudRegistries.FP5_FLAMINGO_ENTITY.get(), Fp5FlamingoRenderer::new);
         event.registerEntityRenderer(FullfudRegistries.FP5_LAUNCHER_ENTITY.get(), Fp5LauncherRenderer::new);
@@ -331,7 +336,7 @@ public final class ShahedClientHandler {
                 return;
             }
 
-            if (lastEngineMix <= activeThreshold) {
+            if (lastEngineMix <= activeThreshold && !(drone instanceof Shahed238DroneEntity)) {
                 playStartOneShot();
             }
 
@@ -357,12 +362,15 @@ public final class ShahedClientHandler {
             final double distance = dronePos.distanceTo(playerPos);
             final double maxDistance = FullfudClientConfig.CLIENT.shahedSoundMaxDistance.get();
             final float dopplerPitch = DroneSoundEffects.computeDopplerPitch(dronePos, droneVelocity, playerPos);
+            final DroneSoundEffects.SoundProfile profile = (drone instanceof Shahed238DroneEntity)
+                ? DroneSoundEffects.SoundProfile.SHAHED_238
+                : DroneSoundEffects.SoundProfile.SHAHED;
             final float gainHF = DroneSoundEffects.computeCombinedGainHF(
                 distance,
                 dronePos.y,
                 playerPos.y,
                 maxDistance,
-                DroneSoundEffects.SoundProfile.SHAHED
+                profile
             );
             ensureEngine(minecraft, maxDistance);
             if (engine != null) {
@@ -381,7 +389,7 @@ public final class ShahedClientHandler {
                 );
             }
 
-            if (motion.y < -0.5D) {
+            if (motion.y < -0.5D && !(drone instanceof Shahed238DroneEntity)) {
                 ensureDive(minecraft, maxDistance);
                 final float diveIntensity = (float) Mth.clamp(-motion.y / 2.0D, 0.0D, 1.0D);
                 if (dive != null) {
@@ -398,11 +406,19 @@ public final class ShahedClientHandler {
             if (engine != null && !engine.isStopped()) {
                 return;
             }
-            engine = new ShahedEngineLoopSoundInstance(
-                FullfudRegistries.SHAHED_ENGINE_LOOP.get(),
-                maxDistance,
-                DroneSoundEffects.SoundProfile.SHAHED
-            );
+            if (drone instanceof Shahed238DroneEntity) {
+                engine = new Shahed238EngineLoopSoundInstance(
+                    FullfudRegistries.FP5_BOOSTER_LOOP.get(),
+                    maxDistance,
+                    DroneSoundEffects.SoundProfile.SHAHED_238
+                );
+            } else {
+                engine = new ShahedEngineLoopSoundInstance(
+                    FullfudRegistries.SHAHED_ENGINE_LOOP.get(),
+                    maxDistance,
+                    DroneSoundEffects.SoundProfile.SHAHED
+                );
+            }
             minecraft.getSoundManager().play(engine);
         }
 
@@ -467,12 +483,15 @@ public final class ShahedClientHandler {
             final double distance = extrapolatedPos.distanceTo(playerPos);
             final double maxDistance = FullfudClientConfig.CLIENT.shahedSoundMaxDistance.get();
             final float dopplerPitch = DroneSoundEffects.computeDopplerPitch(extrapolatedPos, lastDroneVelocity, playerPos);
+            final DroneSoundEffects.SoundProfile profile = (drone instanceof Shahed238DroneEntity)
+                ? DroneSoundEffects.SoundProfile.SHAHED_238
+                : DroneSoundEffects.SoundProfile.SHAHED;
             final float gainHF = DroneSoundEffects.computeCombinedGainHF(
                 distance,
                 extrapolatedPos.y,
                 playerPos.y,
                 maxDistance,
-                DroneSoundEffects.SoundProfile.SHAHED
+                profile
             );
             if (engine != null && !engine.isStopped()) {
                 engine.extrapolate(extrapolatedPos.x, extrapolatedPos.y, extrapolatedPos.z, dopplerPitch, gainHF, nowTick);
@@ -512,6 +531,7 @@ public final class ShahedClientHandler {
     private static void clearGhostState() {
         GHOST_STATES.clear();
         GHOST_ENTITIES.clear();
+        GHOST_NOZZLE_ANCHORS.clear();
     }
 
     private static void updateGhostState(final Minecraft minecraft) {
@@ -534,6 +554,7 @@ public final class ShahedClientHandler {
         GHOST_ENTITIES.entrySet().removeIf(entry ->
             !GHOST_STATES.containsKey(entry.getKey()) || entry.getValue() == null || entry.getValue().level() != minecraft.level
         );
+        GHOST_NOZZLE_ANCHORS.keySet().removeIf(key -> !GHOST_STATES.containsKey(key));
     }
 
     private static void renderGhostShaheds(final RenderLevelStageEvent event, final Minecraft minecraft) {
@@ -556,7 +577,7 @@ public final class ShahedClientHandler {
         final MultiBufferSource.BufferSource bufferSource = minecraft.renderBuffers().bufferSource();
         final Set<UUID> loadedShaheds = new HashSet<>();
         for (final var entity : minecraft.level.entitiesForRendering()) {
-            if (entity instanceof ShahedDroneEntity drone) {
+            if (entity instanceof ShahedDroneEntity drone && drone.isAlive() && !drone.isRemoved() && minecraft.level.hasChunkAt(drone.blockPosition())) {
                 loadedShaheds.add(drone.getUUID());
             }
         }
@@ -573,6 +594,10 @@ public final class ShahedClientHandler {
             final double x = state.x(partialTick);
             final double y = state.y(partialTick);
             final double z = state.z(partialTick);
+            final float yaw = state.yaw(partialTick);
+            final float pitch = state.pitch(partialTick);
+            final float roll = state.roll(partialTick);
+            final float thrust = state.thrust(partialTick);
 
             final double dx = x - cameraPos.x;
             final double dy = y - cameraPos.y;
@@ -590,10 +615,10 @@ public final class ShahedClientHandler {
                 state.velocityX(partialTick),
                 state.velocityY(partialTick),
                 state.velocityZ(partialTick),
-                state.yaw(partialTick),
-                state.pitch(partialTick),
-                state.roll(partialTick),
-                state.thrust(partialTick),
+                yaw,
+                pitch,
+                roll,
+                thrust,
                 state.colorId,
                 state.onLauncher
             );
@@ -608,12 +633,69 @@ public final class ShahedClientHandler {
         }
     }
 
+    private static void renderGhostShahedParticles(final RenderLevelStageEvent event, final Minecraft minecraft, final Set<UUID> processedIds) {
+        if (minecraft == null || minecraft.level == null || GHOST_STATES.isEmpty()) {
+            return;
+        }
+        final float partialTick = event.getPartialTick();
+        for (final Map.Entry<UUID, GhostState> entry : GHOST_STATES.entrySet()) {
+            final UUID droneId = entry.getKey();
+            if (processedIds != null && processedIds.contains(droneId)) {
+                continue;
+            }
+            final GhostState state = entry.getValue();
+            final float thrust = state.thrust(partialTick);
+            if (state.onLauncher || thrust <= 0.02F) {
+                continue;
+            }
+            final double x = state.x(partialTick);
+            final double y = state.y(partialTick);
+            final double z = state.z(partialTick);
+            final float yaw = state.yaw(partialTick);
+            final float pitch = state.pitch(partialTick);
+            final float roll = state.roll(partialTick);
+            final boolean isJet = state.isJet;
+
+            final Vec3 forward = Vec3.directionFromRotation(pitch, yaw).normalize();
+            final Vec3 localUp = Vec3.directionFromRotation(pitch - 90.0F, yaw).normalize();
+            final Vec3 localRight = forward.cross(localUp).normalize();
+            final double rollRad = Math.toRadians((double) roll);
+            final double cosRoll = Math.cos(rollRad);
+            final double sinRoll = Math.sin(rollRad);
+            final Vec3 rolledUp = localUp.scale(cosRoll).add(localRight.scale(sinRoll));
+            final Vec3 rolledDown = rolledUp.scale(-1.0D);
+
+            final double rearOffset = isJet ? 1.75D : 1.40D;
+            final double downOffset = isJet ? 0.125D : 0.10D;
+            final Vec3 currAnchor = new Vec3(x, y, z)
+                .subtract(forward.scale(rearOffset))
+                .add(rolledDown.scale(downOffset));
+
+            final double vx = state.velocityX(partialTick);
+            final double vy = state.velocityY(partialTick);
+            final double vz = state.velocityZ(partialTick);
+            final float speed = (float) Math.sqrt(vx * vx + vy * vy + vz * vz);
+
+            if (isJet) {
+                com.fullfud.fullfud.client.particle.Shahed238ClientVfx.emitExhaust(droneId, currAnchor, forward, speed);
+            } else {
+                com.fullfud.fullfud.client.particle.Shahed136ClientVfx.emitExhaust(droneId, currAnchor, forward, speed, false);
+            }
+        }
+    }
+
     private static ShahedDroneEntity getOrCreateGhostEntity(final Minecraft minecraft, final UUID droneId) {
         ShahedDroneEntity ghost = GHOST_ENTITIES.get(droneId);
         if (ghost != null && ghost.level() == minecraft.level) {
             return ghost;
         }
-        ghost = new ShahedDroneEntity(FullfudRegistries.SHAHED_ENTITY.get(), minecraft.level);
+        final GhostState state = GHOST_STATES.get(droneId);
+        final boolean isJet = (state != null && state.isJet);
+        if (isJet) {
+            ghost = new Shahed238DroneEntity(FullfudRegistries.SHAHED_238_ENTITY.get(), minecraft.level);
+        } else {
+            ghost = new ShahedDroneEntity(FullfudRegistries.SHAHED_ENTITY.get(), minecraft.level);
+        }
         ghost.setUUID(droneId);
         ghost.noCulling = true;
         GHOST_ENTITIES.put(droneId, ghost);
@@ -628,8 +710,8 @@ public final class ShahedClientHandler {
             return LightTexture.FULL_BRIGHT;
         }
         final BlockPos pos = BlockPos.containing(x, y, z);
-        final int block = minecraft.level.getBrightness(LightLayer.BLOCK, pos);
-        final int sky = minecraft.level.getBrightness(LightLayer.SKY, pos);
+        final int block = Math.max(minecraft.level.getBrightness(LightLayer.BLOCK, pos), 4);
+        final int sky = Math.max(minecraft.level.getBrightness(LightLayer.SKY, pos), 11);
         return LightTexture.pack(block, sky);
     }
 
@@ -666,6 +748,7 @@ public final class ShahedClientHandler {
         private float targetThrust;
         private int colorId;
         private boolean onLauncher;
+        private boolean isJet;
         private long lastUpdateTick;
         private int interpolationSteps;
 
@@ -703,6 +786,7 @@ public final class ShahedClientHandler {
             state.targetThrust = packet.thrust();
             state.colorId = packet.colorId();
             state.onLauncher = packet.onLauncher();
+            state.isJet = packet.isJet();
             state.lastUpdateTick = nowTick;
             return state;
         }
@@ -720,6 +804,7 @@ public final class ShahedClientHandler {
             targetThrust = packet.thrust();
             colorId = packet.colorId();
             onLauncher = packet.onLauncher();
+            isJet = packet.isJet();
             interpolationSteps = Mth.clamp((int) Math.max(1L, nowTick - lastUpdateTick), 1, GHOST_INTERPOLATION_MAX_STEPS);
             lastUpdateTick = nowTick;
         }
@@ -801,14 +886,26 @@ public final class ShahedClientHandler {
     }
 
     private static void onRenderLevelStage(final RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
-            return;
-        }
         final Minecraft minecraft = Minecraft.getInstance();
         if (minecraft == null || minecraft.player == null || minecraft.level == null) {
             return;
         }
-        renderGhostShaheds(event, minecraft);
+
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_ENTITIES) {
+            renderGhostShaheds(event, minecraft);
+            Fp5GhostClientHandler.render(event, minecraft);
+            return;
+        }
+
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
+            return;
+        }
+
+        final Set<UUID> processedIds = new HashSet<>();
+        com.fullfud.fullfud.client.particle.Shahed136ClientVfx.renderFrame(event.getPartialTick(), processedIds);
+        com.fullfud.fullfud.client.particle.Shahed238ClientVfx.renderFrame(event.getPartialTick(), processedIds);
+        renderGhostShahedParticles(event, minecraft, processedIds);
+
         if (!isHoldingBattery(minecraft.player)) {
             return;
         }

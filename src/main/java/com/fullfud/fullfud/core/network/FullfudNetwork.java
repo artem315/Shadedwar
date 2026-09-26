@@ -4,6 +4,8 @@ import com.fullfud.fullfud.FullfudMod;
 import com.fullfud.fullfud.core.network.packet.FpvControlPacket;
 import com.fullfud.fullfud.core.network.packet.FpvReleasePacket;
 import com.fullfud.fullfud.core.network.packet.Fp5LaunchPacket;
+import com.fullfud.fullfud.core.network.packet.Fp5TargetPacket;
+import com.fullfud.fullfud.core.network.packet.Fp5GhostUpdatePacket;
 import com.fullfud.fullfud.core.network.packet.DroneAudioLoopPacket;
 import com.fullfud.fullfud.core.network.packet.DroneAudioOneShotPacket;
 import com.fullfud.fullfud.core.network.packet.OpenFpvConfiguratorPacket;
@@ -12,6 +14,7 @@ import com.fullfud.fullfud.core.network.packet.ShahedControlPacket;
 import com.fullfud.fullfud.core.network.packet.ShahedGhostUpdatePacket;
 import com.fullfud.fullfud.core.network.packet.ShahedLinkPacket;
 import com.fullfud.fullfud.core.network.packet.ShahedStatusPacket;
+import com.fullfud.fullfud.core.network.packet.DroneExplosionPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
@@ -52,12 +55,15 @@ public final class FullfudNetwork {
         channel.registerMessage(nextId(), ShahedGhostUpdatePacket.class, ShahedGhostUpdatePacket::encode, ShahedGhostUpdatePacket::decode, ShahedGhostUpdatePacket::handle);
         channel.registerMessage(nextId(), ShahedLinkPacket.class, ShahedLinkPacket::encode, ShahedLinkPacket::decode, ShahedLinkPacket::handle);
         channel.registerMessage(nextId(), Fp5LaunchPacket.class, Fp5LaunchPacket::encode, Fp5LaunchPacket::decode, Fp5LaunchPacket::handle);
+        channel.registerMessage(nextId(), Fp5TargetPacket.class, Fp5TargetPacket::encode, Fp5TargetPacket::decode, Fp5TargetPacket::handle);
+        channel.registerMessage(nextId(), Fp5GhostUpdatePacket.class, Fp5GhostUpdatePacket::encode, Fp5GhostUpdatePacket::decode, Fp5GhostUpdatePacket::handle);
         channel.registerMessage(nextId(), FpvControlPacket.class, FpvControlPacket::encode, FpvControlPacket::decode, FpvControlPacket::handle);
         channel.registerMessage(nextId(), FpvReleasePacket.class, FpvReleasePacket::encode, FpvReleasePacket::decode, FpvReleasePacket::handle);
         channel.registerMessage(nextId(), OpenFpvConfiguratorPacket.class, OpenFpvConfiguratorPacket::encode, OpenFpvConfiguratorPacket::decode, OpenFpvConfiguratorPacket::handle);
         channel.registerMessage(nextId(), UpdateFpvDroneConfigPacket.class, UpdateFpvDroneConfigPacket::encode, UpdateFpvDroneConfigPacket::decode, UpdateFpvDroneConfigPacket::handle);
         channel.registerMessage(nextId(), DroneAudioLoopPacket.class, DroneAudioLoopPacket::encode, DroneAudioLoopPacket::decode, DroneAudioLoopPacket::handle);
         channel.registerMessage(nextId(), DroneAudioOneShotPacket.class, DroneAudioOneShotPacket::encode, DroneAudioOneShotPacket::decode, DroneAudioOneShotPacket::handle);
+        channel.registerMessage(nextId(), DroneExplosionPacket.class, DroneExplosionPacket::encode, DroneExplosionPacket::decode, DroneExplosionPacket::handle);
     }
 
     private static int nextId() {

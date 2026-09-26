@@ -67,6 +67,10 @@ Before building or running the mod, make sure you have:
 - Java 17 installed
 - A Forge 1.20.1 modding environment
 - Internet access for Gradle dependency resolution
+- For playing or running a development client: Immersive Vehicles 1.20.1-25.0.0
+  and MTS Official Pack V29. Put their jars in `libs/` for the development run,
+  or install them alongside Shadedwar in the game's `mods` folder. These
+  third-party jars are not included in this repository.
 
 ## Build and Run
 

@@ -5,6 +5,7 @@ import com.fullfud.fullfud.common.entity.FpvDroneEntity;
 import com.fullfud.fullfud.core.config.FullfudClientConfig;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -28,7 +29,11 @@ public class FpvDroneRenderer extends GeoEntityRenderer<FpvDroneEntity> {
 
         poseStack.translate(0.0D, -0.05D, 0.0D);
 
-        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
+        final int skyLight = Math.max(LightTexture.sky(packedLight), 11);
+        final int blockLight = Math.max(LightTexture.block(packedLight), 4);
+        final int effectiveLight = LightTexture.pack(blockLight, skyLight);
+
+        super.render(entity, entityYaw, partialTick, poseStack, bufferSource, effectiveLight);
         poseStack.popPose();
     }
 
@@ -39,6 +44,6 @@ public class FpvDroneRenderer extends GeoEntityRenderer<FpvDroneEntity> {
         }
         final double distSq = x * x + y * y + z * z;
         final double max = Math.max(1.0D, FullfudClientConfig.CLIENT.fpvRenderDistanceCap.get());
-        return distSq <= max * max && frustum.isVisible(entity.getBoundingBoxForCulling());
+        return distSq <= max * max && frustum.isVisible(entity.getBoundingBoxForCulling().inflate(4.0D));
     }
 }

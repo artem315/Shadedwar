@@ -25,10 +25,7 @@ public final class LatticeClient {
         }
         if (event.getEntity() instanceof LocalPlayer localPlayer && localPlayer instanceof InternalLatticeLocalPlayer internalPlayer) {
             internalPlayer.setViewPointEntityId(localPlayer.getId());
-            final ViewPoint selfViewPoint = ViewPointHelper.resolveViewPoint(localPlayer);
-            if (selfViewPoint != null) {
-                internalPlayer.setViewPoint(selfViewPoint);
-            }
+            internalPlayer.setViewPoint((ViewPoint) (Object) localPlayer);
         }
     }
 
@@ -36,8 +33,9 @@ public final class LatticeClient {
         if (event.phase != TickEvent.Phase.START) {
             return;
         }
-        final var localPlayer = Minecraft.getInstance().player;
-        final var clientLevel = Minecraft.getInstance().level;
+        final var mc = Minecraft.getInstance();
+        final var localPlayer = mc.player;
+        final var clientLevel = mc.level;
         if (localPlayer == null || clientLevel == null) {
             return;
         }
@@ -52,21 +50,41 @@ public final class LatticeClient {
             final var viewPoint = internalLatticeLocalPlayer.getViewPoint();
 
             if (viewPoint instanceof Entity entity) {
-                if (viewPointEntityId != entity.getId()) {
+                if (entity.isRemoved() || !entity.isAlive()) {
+                    internalLatticeLocalPlayer.setViewPointEntityId(localPlayerId);
+                    internalLatticeLocalPlayer.setViewPoint((ViewPoint) (Object) localPlayer);
+                    if (mc.getCameraEntity() != localPlayer) {
+                        mc.setCameraEntity(localPlayer);
+                    }
+                    if (mc.levelRenderer != null) {
+                        mc.levelRenderer.allChanged();
+                    }
+                } else if (mc.getCameraEntity() != entity) {
                     final var viewPointEntity = clientLevel.getEntity(viewPointEntityId);
-
                     if (viewPointEntity != null) {
-                        Minecraft.getInstance().setCameraEntity(viewPointEntity);
+                        mc.setCameraEntity(viewPointEntity);
                     }
                 }
             } else {
                 internalLatticeLocalPlayer.setViewPointEntityId(localPlayerId);
+                internalLatticeLocalPlayer.setViewPoint((ViewPoint) (Object) localPlayer);
+                if (mc.getCameraEntity() != localPlayer) {
+                    mc.setCameraEntity(localPlayer);
+                }
+                if (mc.levelRenderer != null) {
+                    mc.levelRenderer.allChanged();
+                }
+            }
+        } else {
+            if (mc.getCameraEntity() != null && mc.getCameraEntity() != localPlayer && (mc.getCameraEntity().isRemoved() || !mc.getCameraEntity().isAlive() || internalLatticeLocalPlayer.getViewPoint() == (Object) localPlayer)) {
+                mc.setCameraEntity(localPlayer);
             }
         }
     }
 
     public static void handleSetViewPointPacket(SetViewPointPacket msg) {
-        final var localPlayer = Minecraft.getInstance().player;
+        final var mc = Minecraft.getInstance();
+        final var localPlayer = mc.player;
         if (localPlayer == null) {
             return;
         }
@@ -76,18 +94,37 @@ public final class LatticeClient {
 
         if (msg.isEntity()) {
             final var clientLevel = localPlayer.level();
-            internalLatticeLocalPlayer.setViewPointEntityId(msg.getEntityId());
+            final int entityId = msg.getEntityId();
+            internalLatticeLocalPlayer.setViewPointEntityId(entityId);
 
-            final var entity = clientLevel.getEntity(msg.getEntityId());
-            final ViewPoint entityViewPoint = ViewPointHelper.resolveViewPoint(entity);
-            if (entityViewPoint != null) {
-                internalLatticeLocalPlayer.setViewPoint(entityViewPoint);
+            if (entityId == localPlayer.getId()) {
+                internalLatticeLocalPlayer.setViewPoint((ViewPoint) (Object) localPlayer);
+                if (mc.getCameraEntity() != localPlayer) {
+                    mc.setCameraEntity(localPlayer);
+                }
+                if (mc.levelRenderer != null) {
+                    mc.levelRenderer.allChanged();
+                }
+            } else {
+                final var entity = clientLevel.getEntity(entityId);
+                if (entity != null) {
+                    final ViewPoint entityViewPoint = (entity instanceof ViewPoint vp) ? vp : ViewPointHelper.resolveViewPoint(entity);
+                    if (entityViewPoint != null) {
+                        internalLatticeLocalPlayer.setViewPoint(entityViewPoint);
+                    }
+                    if (mc.getCameraEntity() != entity) {
+                        mc.setCameraEntity(entity);
+                    }
+                }
             }
         } else {
             internalLatticeLocalPlayer.setViewPointEntityId(localPlayer.getId());
-            final ViewPoint selfViewPoint = ViewPointHelper.resolveViewPoint(localPlayer);
-            if (selfViewPoint != null) {
-                internalLatticeLocalPlayer.setViewPoint(selfViewPoint);
+            internalLatticeLocalPlayer.setViewPoint((ViewPoint) (Object) localPlayer);
+            if (mc.getCameraEntity() != localPlayer) {
+                mc.setCameraEntity(localPlayer);
+            }
+            if (mc.levelRenderer != null) {
+                mc.levelRenderer.allChanged();
             }
         }
     }

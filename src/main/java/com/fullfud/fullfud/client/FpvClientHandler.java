@@ -1,6 +1,7 @@
 package com.fullfud.fullfud.client;
 
 import com.fullfud.fullfud.client.render.FpvDroneRenderer;
+import com.fullfud.fullfud.client.particle.DroneParticleManager;
 import com.fullfud.fullfud.client.input.ControllerCalibration;
 import com.fullfud.fullfud.client.input.ControllerCalibrationStore;
 import com.fullfud.fullfud.client.input.FpvControllerInput;
@@ -120,7 +121,6 @@ public final class FpvClientHandler {
     private static int lastChainWidth = -1;
     private static int lastChainHeight = -1;
     private static float clientTime = 0.0F;
-    private static final boolean OPTIFINE_PRESENT = isClassPresent("net.optifine.Config");
     private static float lastResolvedCameraYaw = 0.0F;
     private static final float CAMERA_ROTATION_SMOOTH_ALPHA = 0.42F;
     private static final double CAMERA_POSITION_SMOOTH_ALPHA = 0.48D;
@@ -174,12 +174,26 @@ public final class FpvClientHandler {
             MinecraftForge.EVENT_BUS.addListener(FpvClientHandler::onRenderHand);
             MinecraftForge.EVENT_BUS.addListener(FpvClientHandler::onPlayLevelSoundAtEntity);
             MinecraftForge.EVENT_BUS.addListener(FpvSoundHandler::onClientTick);
+            MinecraftForge.EVENT_BUS.addListener(DroneParticleManager::onClientTick);
+            MinecraftForge.EVENT_BUS.addListener(DroneParticleManager::onRenderLevelStage);
+            MinecraftForge.EVENT_BUS.addListener(DroneParticleManager::onLoggingOut);
+            MinecraftForge.EVENT_BUS.addListener(DroneParticleManager::onLevelUnload);
         });
     }
 
     public static void onRegisterRenderers(final EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(FullfudRegistries.FPV_DRONE_ENTITY.get(), FpvDroneRenderer::new);
-        event.registerEntityRenderer(FullfudRegistries.EXPLOSION_SHRAPNEL_ENTITY.get(), context -> new ThrownItemRenderer<>(context, 0.5F, false));
+        event.registerEntityRenderer(FullfudRegistries.EXPLOSION_SHRAPNEL_ENTITY.get(), context -> new net.minecraft.client.renderer.entity.EntityRenderer<com.fullfud.fullfud.common.entity.ExplosionShrapnelEntity>(context) {
+            @Override
+            public boolean shouldRender(final com.fullfud.fullfud.common.entity.ExplosionShrapnelEntity entity, final net.minecraft.client.renderer.culling.Frustum frustum, final double x, final double y, final double z) {
+                return false;
+            }
+
+            @Override
+            public ResourceLocation getTextureLocation(final com.fullfud.fullfud.common.entity.ExplosionShrapnelEntity entity) {
+                return net.minecraft.world.inventory.InventoryMenu.BLOCK_ATLAS;
+            }
+        });
     }
 
     public static void onRegisterKeyMappings(final RegisterKeyMappingsEvent event) {
@@ -685,7 +699,10 @@ public final class FpvClientHandler {
     }
 
     private static boolean shouldUsePostShader() {
-        return FullfudClientConfig.CLIENT.fpvPostShaderEnabled.get() && !OPTIFINE_PRESENT;
+        // The FPV post chain remains opt-in even when OptiFine is installed.
+        // OptiFine may own the final composite, but it must not silently disable
+        // this mod's independent post effect or its custom VFX pipeline.
+        return FullfudClientConfig.CLIENT.fpvPostShaderEnabled.get();
     }
 
     private static boolean isControllerInputActive(final FpvControllerInput.State state) {

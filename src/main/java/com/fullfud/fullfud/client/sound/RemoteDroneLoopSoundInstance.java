@@ -39,6 +39,14 @@ public final class RemoteDroneLoopSoundInstance extends AbstractTickableSoundIns
         stop();
     }
 
+    public void fadeOut() {
+        targetVolume = 0.0F;
+        final Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.level != null) {
+            lastUpdateTick = mc.level.getGameTime();
+        }
+    }
+
     @Override
     public void tick() {
         final Minecraft mc = Minecraft.getInstance();

@@ -17,6 +17,8 @@ import com.fullfud.fullfud.core.network.packet.ShahedLinkPacket;
 import com.fullfud.fullfud.core.network.packet.ShahedStatusPacket;
 import com.fullfud.fullfud.common.menu.ShahedMonitorMenu;
 import dev.lazurite.lattice.api.player.LatticeServerPlayer;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -166,7 +168,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     private static final double DAMAGE_SMOKE_PARTICLES_PER_TICK = 7.0D / 20.0D;
     private static final double DAMAGE_SMOKE_SPREAD = 0.7D;
     private static final double SLOW_SPEED_SCALE = 0.5D;
-    private static final int SHAHED_CHUNK_RADIUS = 4;
+    private static final int SHAHED_CHUNK_RADIUS = 3;
     private static final EntityDimensions SHAHEED_DIMENSIONS = EntityDimensions.scalable(3.0F, 1.0F);
     private final Map<UUID, Integer> viewerDistances = new HashMap<>();
     private float controlForward;
@@ -182,6 +184,8 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     private int controlTimeout;
     private int menuGraceTicks;
     private double rollRate;
+    private int stationaryTicks;
+    private static final int STATIONARY_UNLOAD_THRESHOLD_TICKS = 200;
     private double pitchRate;
     private UUID ownerUUID;
     private int ownerViewDistance = 8;
@@ -202,7 +206,8 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     private boolean lastEngineActiveAudio;
     private float lastThrustAudio;
 
-    private static final byte AUDIO_TYPE_SHAHED = 1;
+    protected static final byte AUDIO_TYPE_SHAHED = 1;
+    protected static final byte AUDIO_TYPE_SHAHED_238 = 2;
     private static final byte AUDIO_KIND_START = 1;
     private static final byte AUDIO_KIND_STOP = 2;
     private static final float ENGINE_ACTIVE_THRESHOLD = 0.02F;
@@ -259,7 +264,15 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     }
 
     public static Optional<ShahedDroneEntity> find(final ServerLevel level, final UUID uuid) {
-        final Entity entity = level.getEntity(uuid);
+        Entity entity = level.getEntity(uuid);
+        if (entity == null) {
+            final Optional<ChunkPos> lastChunk = ShahedLinkData.get(level).lastChunk(uuid);
+            if (lastChunk.isPresent()) {
+                final ChunkPos pos = lastChunk.get();
+                level.getChunk(pos.x, pos.z);
+                entity = level.getEntity(uuid);
+            }
+        }
         if (entity instanceof ShahedDroneEntity drone) {
             return Optional.of(drone);
         }
@@ -329,7 +342,22 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
             this.setXRot((float) bodyPitch);
         }
 
+        if (level().isClientSide()) {
+            if (!isOnLauncher() && !(this instanceof Shahed238DroneEntity)) {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                    com.fullfud.fullfud.client.particle.Shahed136ClientVfx.tick(this);
+                });
+            }
+        }
+
         if (!level().isClientSide()) {
+            final boolean hasMovement = getDeltaMovement().lengthSqr() > 0.0004D;
+            final boolean activeFlight = getThrust() > 0.01F || controllingPlayer != null || armed || !viewerDistances.isEmpty();
+            if (hasMovement || activeFlight) {
+                stationaryTicks = 0;
+            } else {
+                stationaryTicks++;
+            }
             updateLaunchState();
             final ServerPlayer cp = getControllingPlayer();
             if (armed) {
@@ -380,26 +408,29 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         final double range = SHAHED_AUDIO_RANGE_BLOCKS;
         final double rangeSqr = range * range;
 
+        final byte audioType = getAudioDroneType();
         if (engineActive != lastEngineActiveAudio) {
             final byte kind = engineActive ? AUDIO_KIND_START : AUDIO_KIND_STOP;
             final float strength = engineActive ? engineMix : lastThrustAudio;
-            for (final ServerPlayer player : serverLevel.players()) {
-                final boolean controlling = controllingPlayer != null && controllingPlayer.equals(player.getUUID());
-                final double distSqr = controlling ? 0.0D : player.distanceToSqr(this);
-                if (!controlling && distSqr > rangeSqr) {
-                    continue;
+            if (audioType != AUDIO_TYPE_SHAHED_238) {
+                for (final ServerPlayer player : serverLevel.players()) {
+                    final boolean controlling = controllingPlayer != null && controllingPlayer.equals(player.getUUID());
+                    final double distSqr = controlling ? 0.0D : player.distanceToSqr(this);
+                    if (!controlling && distSqr > rangeSqr) {
+                        continue;
+                    }
+                    final float distanceFactor = distanceFactor(distSqr, range, 1.4D);
+                    float volume = (0.25F + 0.75F * strength) * distanceFactor;
+                    if (!controlling && isOccluded(serverLevel, player)) {
+                        volume *= 0.45F;
+                    }
+                    if (volume <= 0.001F) {
+                        continue;
+                    }
+                    final float pitch = 0.9F + 0.2F * strength;
+                    FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> player),
+                        new DroneAudioOneShotPacket(audioType, kind, getUUID(), getX(), getY(), getZ(), volume, pitch));
                 }
-                final float distanceFactor = distanceFactor(distSqr, range, 1.4D);
-                float volume = (0.25F + 0.75F * strength) * distanceFactor;
-                if (!controlling && isOccluded(serverLevel, player)) {
-                    volume *= 0.45F;
-                }
-                if (volume <= 0.001F) {
-                    continue;
-                }
-                final float pitch = 0.9F + 0.2F * strength;
-                FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> player),
-                    new DroneAudioOneShotPacket(AUDIO_TYPE_SHAHED, kind, getUUID(), getX(), getY(), getZ(), volume, pitch));
             }
         }
 
@@ -408,7 +439,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
             final double speed = motion.length();
             final float speedFactor = (float) Mth.clamp(speed / 1.8D, 0.0D, 1.0D);
             final float flightVolumeMult = 1.0F + speedFactor * 0.35F;
-            final float pitch = 0.85F + engineMix * 0.35F + speedFactor * 0.12F;
+            final float pitch = computeAudioLoopPitch(engineMix, speedFactor);
             final float base = (0.3F + engineMix * 0.7F) * flightVolumeMult;
 
             for (final ServerPlayer player : serverLevel.players()) {
@@ -423,7 +454,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
                     volume *= 0.45F;
                 }
                 FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> player),
-                    new DroneAudioLoopPacket(AUDIO_TYPE_SHAHED, getUUID(), getX(), getY(), getZ(), volume, pitch, true));
+                    new DroneAudioLoopPacket(audioType, getUUID(), getX(), getY(), getZ(), volume, pitch, true));
             }
         } else if (lastEngineActiveAudio) {
             for (final ServerPlayer player : serverLevel.players()) {
@@ -433,12 +464,20 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
                     continue;
                 }
                 FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> player),
-                    new DroneAudioLoopPacket(AUDIO_TYPE_SHAHED, getUUID(), getX(), getY(), getZ(), 0.0F, 1.0F, false));
+                    new DroneAudioLoopPacket(audioType, getUUID(), getX(), getY(), getZ(), 0.0F, 1.0F, false));
             }
         }
 
         lastEngineActiveAudio = engineActive;
         lastThrustAudio = engineMix;
+    }
+
+    protected byte getAudioDroneType() {
+        return AUDIO_TYPE_SHAHED;
+    }
+
+    protected float computeAudioLoopPitch(final float engineMix, final float speedFactor) {
+        return 0.85F + engineMix * 0.35F + speedFactor * 0.12F;
     }
 
     private static float distanceFactor(final double distSqr, final double range, final double exponent) {
@@ -1133,6 +1172,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
             return;
         }
         final double rangeSqr = GHOST_BROADCAST_RANGE_BLOCKS * GHOST_BROADCAST_RANGE_BLOCKS;
+        final boolean isJet = this instanceof Shahed238DroneEntity;
         final ShahedGhostUpdatePacket packet = new ShahedGhostUpdatePacket(
             this.getUUID(),
             this.getX(),
@@ -1146,7 +1186,8 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
             (float) bodyRoll,
             getThrust(),
             getColor().getId(),
-            isOnLauncher()
+            isOnLauncher(),
+            isJet
         );
         for (final ServerPlayer player : serverLevel.players()) {
             if (player == null || player.isRemoved()) {
@@ -1187,13 +1228,15 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
 
     @Override
     public void registerControllers(final AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "flight", state -> {
-            if (shouldUseRunningAnimation()) {
-                state.setAndContinue(RUN_ANIMATION);
-            } else {
-                state.setAndContinue(IDLE_ANIMATION);
+        controllers.add(new AnimationController<>(this, "flight", 0, state -> {
+            if (isOnLauncher()) {
+                return PlayState.STOP;
             }
-            return PlayState.CONTINUE;
+            if (shouldUseRunningAnimation()) {
+                return state.setAndContinue(RUN_ANIMATION);
+            } else {
+                return state.setAndContinue(IDLE_ANIMATION);
+            }
         }));
     }
 
@@ -1302,12 +1345,16 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     private void handleProjectileImpact(@javax.annotation.Nullable final Entity directEntity) {
         projectileHitCount++;
         if (projectileHitCount >= 2) {
-            detonate(directEntity != null ? directEntity.position() : position());
+            detonate(position());
             return;
         }
         final double horizontalSpeed = Math.sqrt(linearVelocity.x * linearVelocity.x + linearVelocity.z * linearVelocity.z);
         crippledHorizontalTargetSpeed = Math.max(horizontalSpeed, 0.0D);
         damageSmokeAccumulator = 0.0D;
+    }
+
+    public boolean isDamaged() {
+        return projectileHitCount > 0;
     }
 
     @Override
@@ -1342,16 +1389,12 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
 
     public ItemStack createItemStack() {
         if (isSlowVariant()) {
-            return new ItemStack(getColor() == ShahedColor.BLACK
-                ? FullfudRegistries.SHAHED_BLACK_ITEM_SLOW.get()
-                : FullfudRegistries.SHAHED_ITEM_SLOW.get());
+            return new ItemStack(FullfudRegistries.SHAHED_ITEM_SLOW.get());
         }
-        return new ItemStack(getColor() == ShahedColor.BLACK
-            ? FullfudRegistries.SHAHED_BLACK_ITEM.get()
-            : FullfudRegistries.SHAHED_ITEM.get());
+        return new ItemStack(FullfudRegistries.SHAHED_ITEM.get());
     }
 
-    private boolean isSlowVariant() {
+    protected boolean isSlowVariant() {
         return Math.abs(resolveSpeedScale() - SLOW_SPEED_SCALE) <= 1.0E-3D;
     }
 
@@ -1455,10 +1498,21 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         this.bodyRoll = 0.0D;
         this.bodyRollO = 0.0D;
         setXRot(0.0F);
+        if (!level().isClientSide) {
+            entityData.set(DATA_SERVER_YAW, yaw);
+            entityData.set(DATA_SERVER_PITCH, 0.0F);
+        }
     }
 
     @Override
     public void remove(final RemovalReason reason) {
+        if (level().isClientSide()) {
+            if (!(this instanceof Shahed238DroneEntity)) {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                    com.fullfud.fullfud.client.particle.Shahed136ClientVfx.remove(getUUID());
+                });
+            }
+        }
         if (!level().isClientSide()) {
             final ServerPlayer controller = getControllingPlayer();
             if (controller != null) {
@@ -1555,6 +1609,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
             releaseChunkTicket();
             return;
         }
+        ShahedLinkData.get(serverLevel).updateChunk(getUUID(), chunkPosition());
         ChunkLoadManager.ensureChunksLoaded(serverLevel, getId(), chunkPosition(), SHAHED_CHUNK_RADIUS);
     }
 
@@ -1647,15 +1702,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         if (!(level() instanceof ServerLevel serverLevel)) {
             return;
         }
-        final PrimedTnt tnt = new PrimedTnt(serverLevel, getX(), getY(), getZ(), controller);
-        tnt.setFuse(0);
-        RemotePlayerProtection.markHazard(tnt, this);
-        DroneExplosionLimiter.markNoBlockDamage(tnt);
-        DroneExplosionLimiter.markNoEntityDamage(tnt);
-        serverLevel.addFreshEntity(tnt);
-        serverLevel.explode(tnt, getX(), getY(), getZ(), SHAHED_FIREBALL_POWER, net.minecraft.world.level.Level.ExplosionInteraction.MOB);
-        DroneExplosionEffects.afterShahedExplosion(serverLevel, tnt, controller, explosionDirection);
-        tnt.discard();
+        DroneExplosionEffects.afterShahedExplosion(serverLevel, this, controller, explosionDirection);
     }
 
     private Vec3 resolveExplosionDirection() {
@@ -1716,10 +1763,6 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
             return false;
         }
         if (controllingPlayer != null && !controllingPlayer.equals(player.getUUID())) {
-            return false;
-        }
-        if (!isWithinPlayerChunkRange(player)) {
-            player.displayClientMessage(Component.translatable("message.fullfud.fpv.out_of_range"), true);
             return false;
         }
         if (isOnLauncher()) {
@@ -1785,6 +1828,15 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         }
 
         final ControlSession endedSession = controlSession;
+        // Releasing the monitor must not leave a timed-out dive command active.
+        controlForward = 0.0F;
+        controlStrafe = 0.0F;
+        controlVertical = 0.0F;
+        inputMousePitchDelta = 0.0F;
+        inputMouseRollDelta = 0.0F;
+        controlTimeout = 0;
+        rollRate = 0.0D;
+        pitchRate = 0.0D;
         if (player != null) {
             restoreRemoteController(player, endedSession);
             clearRemoteTag(player);
@@ -1906,9 +1958,6 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         if (player instanceof LatticeServerPlayer lattice) {
             lattice.removeViewPoint();
             lattice.setCameraWithoutViewPoint(player);
-            if (player instanceof dev.lazurite.lattice.api.point.ViewPoint viewPoint) {
-                lattice.setViewPoint(viewPoint);
-            }
             RemoteControlFailsafe.ensureLatticePlayerRegistered(player);
         } else {
             player.setCamera(player);
@@ -1937,13 +1986,18 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         final ChunkPos chunkPos = player.chunkPosition();
         player.connection.send(new ClientboundSetChunkCacheCenterPacket(chunkPos.x, chunkPos.z));
         lastSentViewCenter = null;
-        RemoteControlFailsafe.resetViewpointChunksToPlayer(player);
         RemoteControlFailsafe.forceChunkTracking(player);
         RemoteControlFailsafe.forceChunkRefresh(player);
+        RemoteControlFailsafe.resetViewpointChunksToPlayer(player);
+    }
+
+    @Override
+    public boolean shouldRenderAtSqrDistance(final double distance) {
+        return distance < 4096.0D * 4096.0D;
     }
 
     private boolean shouldKeepChunksLoaded() {
-        return keepChunksLoadedWithoutPlayer || controllingPlayer != null || armed || !viewerDistances.isEmpty();
+        return keepChunksLoadedWithoutPlayer || controllingPlayer != null || armed || !viewerDistances.isEmpty() || stationaryTicks < STATIONARY_UNLOAD_THRESHOLD_TICKS;
     }
 
     private void syncRemoteController(final ServerPlayer player) {
@@ -2009,9 +2063,9 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         }
         final ChunkPos chunkPos = player.chunkPosition();
         player.connection.send(new ClientboundSetChunkCacheCenterPacket(chunkPos.x, chunkPos.z));
-        RemoteControlFailsafe.resetViewpointChunksToPlayer(player);
         RemoteControlFailsafe.forceChunkTracking(player);
         RemoteControlFailsafe.forceChunkRefresh(player);
+        RemoteControlFailsafe.resetViewpointChunksToPlayer(player);
     }
 
     private record OrientationBasis(Vec3 forward, Vec3 up, Vec3 right) { }

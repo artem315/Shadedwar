@@ -19,7 +19,8 @@ public record ShahedGhostUpdatePacket(UUID droneId,
                                       float roll,
                                       float thrust,
                                       int colorId,
-                                      boolean onLauncher) {
+                                      boolean onLauncher,
+                                      boolean isJet) {
 
     public static ShahedGhostUpdatePacket decode(final FriendlyByteBuf buffer) {
         final UUID droneId = buffer.readUUID();
@@ -35,7 +36,8 @@ public record ShahedGhostUpdatePacket(UUID droneId,
         final float thrust = buffer.readFloat();
         final int colorId = buffer.readVarInt();
         final boolean onLauncher = buffer.readBoolean();
-        return new ShahedGhostUpdatePacket(droneId, x, y, z, velocityX, velocityY, velocityZ, yaw, pitch, roll, thrust, colorId, onLauncher);
+        final boolean isJet = buffer.readableBytes() > 0 && buffer.readBoolean();
+        return new ShahedGhostUpdatePacket(droneId, x, y, z, velocityX, velocityY, velocityZ, yaw, pitch, roll, thrust, colorId, onLauncher, isJet);
     }
 
     public void encode(final FriendlyByteBuf buffer) {
@@ -52,6 +54,7 @@ public record ShahedGhostUpdatePacket(UUID droneId,
         buffer.writeFloat(thrust);
         buffer.writeVarInt(colorId);
         buffer.writeBoolean(onLauncher);
+        buffer.writeBoolean(isJet);
     }
 
     public void handle(final Supplier<NetworkEvent.Context> contextSupplier) {

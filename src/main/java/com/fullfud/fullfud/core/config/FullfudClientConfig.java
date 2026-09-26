@@ -19,6 +19,20 @@ public final class FullfudClientConfig {
         RIGHT_TRIGGER
     }
 
+    public enum VfxQuality {
+        AUTO,
+        LOW,
+        MEDIUM,
+        HIGH,
+        ULTRA
+    }
+
+    public enum VfxLightingMode {
+        CUSTOM_REPLACE,
+        CUSTOM_PLUS,
+        CUSTOM_ONLY
+    }
+
     public static final class Client {
         public final ForgeConfigSpec.BooleanValue fpvControllerEnabled;
         public final ForgeConfigSpec.BooleanValue fpvControllerPreferGamepadMapping;
@@ -54,6 +68,19 @@ public final class FullfudClientConfig {
         public final ForgeConfigSpec.BooleanValue fpvHideVanillaHud;
         public final ForgeConfigSpec.BooleanValue fpvHideHand;
         public final ForgeConfigSpec.IntValue fpvRenderDistanceCap;
+
+        public final ForgeConfigSpec.BooleanValue vfxEnabled;
+        public final ForgeConfigSpec.EnumValue<VfxQuality> vfxQuality;
+        public final ForgeConfigSpec.EnumValue<VfxLightingMode> vfxLightingMode;
+        public final ForgeConfigSpec.BooleanValue vfxCustomLightingEnabled;
+        public final ForgeConfigSpec.BooleanValue vfxVolumetricEnabled;
+        public final ForgeConfigSpec.BooleanValue vfxShadowsEnabled;
+        public final ForgeConfigSpec.BooleanValue vfxBloomEnabled;
+        public final ForgeConfigSpec.IntValue vfxMaxLights;
+        public final ForgeConfigSpec.DoubleValue vfxAmbientStrength;
+        public final ForgeConfigSpec.IntValue vfxTrailLifetimeTicks;
+        public final ForgeConfigSpec.BooleanValue vfxDebug;
+
         public final ForgeConfigSpec.BooleanValue fpvUseLocalEntityAudio;
         public final ForgeConfigSpec.DoubleValue fpvSoundMaxDistance;
 
@@ -235,6 +262,42 @@ public final class FullfudClientConfig {
                 .defineInRange("soundMaxDistance", 250.0D, 0.0D, 5000.0D);
 
             builder.pop();
+            builder.pop();
+
+            builder.push("vfx");
+            vfxEnabled = builder
+                .comment("Enable the mod-owned FP-5/common VFX renderer and custom lighting pipeline.")
+                .define("enabled", true);
+            vfxQuality = builder
+                .comment("VFX quality profile. AUTO reduces light and trail work on low FPS clients.")
+                .defineEnum("quality", VfxQuality.AUTO);
+            vfxLightingMode = builder
+                .comment("Strength of the Forge-only custom HDR contribution over the already-rendered vanilla scene. CUSTOM_REPLACE is a calibrated full contribution, not a framebuffer replacement.")
+                .defineEnum("lightingMode", VfxLightingMode.CUSTOM_REPLACE);
+            vfxCustomLightingEnabled = builder
+                .comment("Apply the custom floating point light field to visible scene surfaces.")
+                .define("customLightingEnabled", true);
+            vfxVolumetricEnabled = builder
+                .comment("Render local engine and explosion light volumes.")
+                .define("volumetricEnabled", true);
+            vfxShadowsEnabled = builder
+                .comment("Render soft local contact shadows for VFX lights.")
+                .define("shadowsEnabled", true);
+            vfxBloomEnabled = builder
+                .comment("Enable the mod-owned emissive/bloom contribution.")
+                .define("bloomEnabled", true);
+            vfxMaxLights = builder
+                .comment("Maximum active custom lights uploaded to the VFX shader.")
+                .defineInRange("maxLights", 8, 1, 8);
+            vfxAmbientStrength = builder
+                .comment("Custom ambient contribution for the scene lighting pass.")
+                .defineInRange("ambientStrength", 0.7D, 0.0D, 2.0D);
+            vfxTrailLifetimeTicks = builder
+                .comment("Maximum lifetime of a persistent FP-5 trail in client ticks.")
+                .defineInRange("trailLifetimeTicks", 600, 60, 1200);
+            vfxDebug = builder
+                .comment("Enable lightweight VFX diagnostics and debug markers.")
+                .define("debug", false);
             builder.pop();
 
             builder.push("shahed");

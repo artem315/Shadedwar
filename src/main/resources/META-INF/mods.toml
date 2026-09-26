@@ -35,8 +35,22 @@ ordering="NONE"
 side="BOTH"
 
 [[dependencies.fullfud]]
-modId="lattice"
+modId="lazurite_lattice"
 mandatory=true
 versionRange="[3.0.0,)"
 ordering="NONE"
+side="BOTH"
+
+[[dependencies.fullfud]]
+modId="mts"
+mandatory=true
+versionRange="[22.18.0,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.fullfud]]
+modId="mtsofficialpack"
+mandatory=true
+versionRange="[29,)"
+ordering="AFTER"
 side="BOTH"

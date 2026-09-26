@@ -2,6 +2,10 @@ package com.fullfud.fullfud;
 
 import com.fullfud.fullfud.client.FpvClientHandler;
 import com.fullfud.fullfud.client.ShahedClientHandler; 
+import com.fullfud.fullfud.client.particle.Fp5ClientVfx;
+import com.fullfud.fullfud.client.sound.Fp5SoundHandler;
+import com.fullfud.fullfud.client.vfx.VfxRenderPipeline;
+
 import com.fullfud.fullfud.core.FullfudCreativeTabs;
 import com.fullfud.fullfud.core.FullfudGameRules;
 import com.fullfud.fullfud.core.FullfudRegistries;
@@ -25,6 +29,10 @@ public class FullfudMod {
     public static final String MOD_ID = "fullfud";
 
     public FullfudMod() {
+        if (!net.minecraftforge.fml.ModList.get().isLoaded("mtsofficialpack")) {
+            throw new IllegalStateException("[ShadedWar] MTS Official Content Pack ('mtsofficialpack') is required to run ShadedWar!");
+        }
+
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, FullfudClientConfig.SPEC);
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, FullfudServerConfig.SPEC);
 
@@ -40,7 +48,8 @@ public class FullfudMod {
 
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
             modEventBus.addListener(this::onClientSetup);
-            
+            modEventBus.addListener(VfxRenderPipeline::registerShaders);
+
             FpvClientHandler.registerClientEvents(modEventBus);
             ShahedClientHandler.registerClientEvents(modEventBus);
         });
@@ -55,5 +64,7 @@ public class FullfudMod {
     private void onClientSetup(final FMLClientSetupEvent event) {
         FpvClientHandler.onClientSetup(event);
         ShahedClientHandler.onClientSetup(event);
+        Fp5SoundHandler.init(event);
+        Fp5ClientVfx.init(event);
     }
 }

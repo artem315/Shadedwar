@@ -19,6 +19,7 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import net.minecraftforge.network.NetworkHooks;
@@ -29,6 +30,7 @@ import software.bernie.geckolib.core.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -39,6 +41,20 @@ public class MonitorItem extends Item implements GeoItem {
 
     public MonitorItem(final Properties properties) {
         super(properties);
+    }
+
+    @Override
+    public boolean isFoil(final ItemStack stack) {
+        return getLinkedDrone(stack).isPresent() || getLinkedFp5(stack).isPresent();
+    }
+
+    @Override
+    public void appendHoverText(final ItemStack stack, final Level level, final List<Component> tooltip, final TooltipFlag flag) {
+        super.appendHoverText(stack, level, tooltip, flag);
+        getLinkedDrone(stack).ifPresent(id -> tooltip.add(Component.translatable(
+            "tooltip.fullfud.monitor.linked_shahed", id.toString().substring(0, 8))));
+        getLinkedFp5(stack).ifPresent(id -> tooltip.add(Component.translatable(
+            "tooltip.fullfud.monitor.linked_fp5", id.toString().substring(0, 8))));
     }
 
     @Override
@@ -129,13 +145,19 @@ public class MonitorItem extends Item implements GeoItem {
                     flamingo.getUUID(),
                     flamingo.getId(),
                     flamingo.getMonitorTarget(),
-                    flamingo.isLaunched()
+                    flamingo.isLaunched(),
+                    flamingo.getX(),
+                    flamingo.getY(),
+                    flamingo.getZ()
                 ), Component.translatable("menu.fullfud.fp5_monitor")),
                 buf -> {
                     buf.writeUUID(flamingo.getUUID());
                     buf.writeInt(flamingo.getId());
                     buf.writeBlockPos(flamingo.getMonitorTarget());
                     buf.writeBoolean(flamingo.isLaunched());
+                    buf.writeDouble(flamingo.getX());
+                    buf.writeDouble(flamingo.getY());
+                    buf.writeDouble(flamingo.getZ());
                 });
             return true;
         } catch (final Throwable ignored) {
@@ -220,9 +242,6 @@ public class MonitorItem extends Item implements GeoItem {
                 serverPlayer.displayClientMessage(Component.translatable("message.fullfud.monitor.open_failed"), true);
             }
         }, () -> {
-            unlinkAcrossLevels(serverPlayer, droneId);
-            clearLinkedDrone(stack);
-            FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShahedLinkPacket(droneId, false));
             serverPlayer.displayClientMessage(Component.translatable("message.fullfud.monitor.drone_missing"), true);
         });
     }

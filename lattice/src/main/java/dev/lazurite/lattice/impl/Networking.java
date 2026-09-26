@@ -11,11 +11,11 @@ import net.minecraftforge.network.simple.SimpleChannel;
 public final class Networking {
 
     public static final ResourceLocation SET_VIEWPOINT_PACKET_IDENTIFIER =
-        new ResourceLocation("lattice", "set_viewpoint");
+        new ResourceLocation("lazurite_lattice", "set_viewpoint");
     private static final String PROTOCOL_VERSION = "1";
 
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation("lattice", "main"),
+        new ResourceLocation("lazurite_lattice", "main"),
         () -> PROTOCOL_VERSION,
         PROTOCOL_VERSION::equals,
         PROTOCOL_VERSION::equals

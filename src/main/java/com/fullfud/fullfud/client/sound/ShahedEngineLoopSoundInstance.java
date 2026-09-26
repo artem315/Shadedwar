@@ -11,20 +11,20 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
-public final class ShahedEngineLoopSoundInstance extends AbstractTickableSoundInstance {
-    private static final int MAX_FADE_TICKS = 60;
-    private static final long TIMEOUT_TICKS = 20L;
-    private long lastUpdateTick = -1L;
-    private boolean dying;
-    private int fadeTicks;
-    private float targetVolume;
-    private float targetPitch = 1.0F;
-    private float targetDopplerPitch = 1.0F;
-    private float currentDopplerPitch = 1.0F;
-    private float targetGainHF = 1.0F;
-    private float currentGainHF = 1.0F;
-    private final double maxAudibleDistance;
-    private final DroneSoundEffects.SoundProfile soundProfile;
+public class ShahedEngineLoopSoundInstance extends AbstractTickableSoundInstance {
+    protected static final int MAX_FADE_TICKS = 60;
+    protected static final long TIMEOUT_TICKS = 20L;
+    protected long lastUpdateTick = -1L;
+    protected boolean dying;
+    protected int fadeTicks;
+    protected float targetVolume;
+    protected float targetPitch = 1.0F;
+    protected float targetDopplerPitch = 1.0F;
+    protected float currentDopplerPitch = 1.0F;
+    protected float targetGainHF = 1.0F;
+    protected float currentGainHF = 1.0F;
+    protected final double maxAudibleDistance;
+    protected final DroneSoundEffects.SoundProfile soundProfile;
 
     public ShahedEngineLoopSoundInstance(
         final SoundEvent sound,
@@ -148,7 +148,7 @@ public final class ShahedEngineLoopSoundInstance extends AbstractTickableSoundIn
         }
     }
 
-    private void applyFilter() {
+    protected void applyFilter() {
         if (OpenALFilters.isAvailable()) {
             OpenALFilters.applyFilterForInstance(this, 1.0F, currentGainHF);
         }
