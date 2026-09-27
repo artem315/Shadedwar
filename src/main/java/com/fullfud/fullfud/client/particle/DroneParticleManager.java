@@ -2147,9 +2147,10 @@ public final class DroneParticleManager {
         final Vec3 camPos = (mainCamera != null) ? mainCamera.getPosition() : null;
         final Vec3 camForward = (mainCamera != null) ? Vec3.directionFromRotation(mainCamera.getXRot(), mainCamera.getYRot()).normalize() : null;
 
-        final boolean isFirstPersonCockpit = (camPos != null && camForward != null) &&
-            ((cameraEntity instanceof com.fullfud.fullfud.common.entity.Shahed238DroneEntity)
-                || (camForward.dot(forward) > 0.65D && camPos.distanceToSqr(currAnchor) < 16.0D));
+        final boolean isFirstPersonCockpit = camPos != null && camForward != null
+            && camPos.distanceToSqr(currAnchor) < 16.0D
+            && (cameraEntity instanceof com.fullfud.fullfud.common.entity.Shahed238DroneEntity
+                || camForward.dot(forward) > 0.65D);
 
         for (int i = 0; i <= steps; i++) {
             final double px = prevAnchor.x + stepX * i;

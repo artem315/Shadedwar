@@ -3,6 +3,9 @@ package com.fullfud.fullfud.model;
 import com.fullfud.fullfud.common.entity.Shahed238DroneEntity;
 import com.fullfud.fullfud.common.entity.ShahedDroneEntity;
 import com.fullfud.fullfud.core.FullfudRegistries;
+import com.fullfud.fullfud.core.network.packet.ShahedGhostUpdatePacket;
+import io.netty.buffer.Unpooled;
+import net.minecraft.network.FriendlyByteBuf;
 import com.fullfud.fullfud.testing.Fp5Assertions;
 import com.fullfud.fullfud.testing.Fp5Test;
 import com.fullfud.fullfud.testing.Fp5TestSuite;
@@ -13,6 +16,7 @@ import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
 @Fp5TestSuite(name = "Shahed-136, 238 & Launcher Remodeling Suite", features = {"REMODEL_136", "JET_238", "LAUNCHER"}, milestone = "M5")
 public class ShahedModelGeometryTest {
@@ -143,6 +147,26 @@ public class ShahedModelGeometryTest {
                         float.class),
                 "DroneParticleManager.spawnShahed238JetExhaust must exist"
         );
+    }
+
+    @Fp5Test(tier = 1, features = {"JET_238", "VFX"}, description = "Verify distant Shahed smoke update and removal packets round-trip")
+    public void testShahedGhostPacketRoundTrip() {
+        final UUID id = UUID.randomUUID();
+        for (final boolean removed : new boolean[] {false, true}) {
+            final ShahedGhostUpdatePacket original = new ShahedGhostUpdatePacket(
+                id, 120.5D, 84.0D, -45.25D, 2.0D, -0.4D, 1.5D,
+                45.0F, -30.0F, 12.0F, 0.8F, 1, false, true, removed
+            );
+            final FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+            try {
+                original.encode(buffer);
+                final ShahedGhostUpdatePacket decoded = ShahedGhostUpdatePacket.decode(buffer);
+                Fp5Assertions.assertEquals(original, decoded, "Ghost packet must preserve jet state and removal flag");
+                Fp5Assertions.assertEquals(0, buffer.readableBytes(), "Ghost packet must consume all bytes");
+            } finally {
+                buffer.release();
+            }
+        }
     }
 
     @Fp5Test(tier = 1, features = {"ANIMATION", "REMODEL_136"}, description = "Verify idle and running aliases in shahed_136.animation.json")

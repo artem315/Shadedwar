@@ -146,6 +146,14 @@ public final class ShahedClientHandler {
         if (packet == null || packet.droneId() == null) {
             return;
         }
+        if (packet.removed()) {
+            GHOST_STATES.remove(packet.droneId());
+            GHOST_ENTITIES.remove(packet.droneId());
+            GHOST_NOZZLE_ANCHORS.remove(packet.droneId());
+            com.fullfud.fullfud.client.particle.Shahed238ClientVfx.forget(packet.droneId());
+            com.fullfud.fullfud.client.particle.Shahed136ClientVfx.forget(packet.droneId());
+            return;
+        }
         if (!FullfudClientConfig.CLIENT.shahedGhostRenderEnabled.get()) {
             GHOST_STATES.remove(packet.droneId());
             GHOST_ENTITIES.remove(packet.droneId());

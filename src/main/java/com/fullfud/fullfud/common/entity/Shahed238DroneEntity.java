@@ -42,7 +42,11 @@ public class Shahed238DroneEntity extends ShahedDroneEntity {
         super.remove(reason);
         if (level().isClientSide()) {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                com.fullfud.fullfud.client.particle.Shahed238ClientVfx.remove(getUUID());
+                if (reason.shouldDestroy()) {
+                    com.fullfud.fullfud.client.particle.Shahed238ClientVfx.forget(getUUID());
+                } else {
+                    com.fullfud.fullfud.client.particle.Shahed238ClientVfx.remove(getUUID());
+                }
             });
         }
     }

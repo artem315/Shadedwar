@@ -161,6 +161,13 @@ public final class Shahed238ClientVfx {
         }
     }
 
+    public static void forget(final UUID id) {
+        remove(id);
+        if (id != null) {
+            LAST_RENDER_ANCHORS.remove(id);
+        }
+    }
+
     public static void clear() {
         TRACKED_DRONES.clear();
         LAST_RENDER_ANCHORS.clear();

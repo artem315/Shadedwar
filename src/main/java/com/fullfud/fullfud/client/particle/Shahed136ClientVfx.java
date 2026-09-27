@@ -155,4 +155,11 @@ public final class Shahed136ClientVfx {
             TRACKED_DRONES.remove(id);
         }
     }
+
+    public static void forget(final UUID id) {
+        remove(id);
+        if (id != null) {
+            LAST_RENDER_ANCHORS.remove(id);
+        }
+    }
 }

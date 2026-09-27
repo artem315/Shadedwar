@@ -1190,7 +1190,8 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
             getThrust(),
             getColor().getId(),
             isOnLauncher(),
-            isJet
+            isJet,
+            false
         );
         for (final ServerPlayer player : serverLevel.players()) {
             if (player == null || player.isRemoved()) {
@@ -1200,6 +1201,20 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
                 continue;
             }
             FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> player), packet);
+        }
+    }
+
+    private void broadcastGhostRemoval(final ServerLevel serverLevel) {
+        final ShahedGhostUpdatePacket packet = new ShahedGhostUpdatePacket(
+            getUUID(), getX(), getY(), getZ(), 0.0D, 0.0D, 0.0D,
+            getYRot(), getXRot(), (float) bodyRoll, 0.0F,
+            getColor().getId(), isOnLauncher(), this instanceof Shahed238DroneEntity, true
+        );
+        final double rangeSqr = GHOST_BROADCAST_RANGE_BLOCKS * GHOST_BROADCAST_RANGE_BLOCKS;
+        for (final ServerPlayer player : serverLevel.players()) {
+            if (player.distanceToSqr(this) <= rangeSqr) {
+                FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> player), packet);
+            }
         }
     }
 
@@ -1531,6 +1546,9 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
                 }
             }
             if (level() instanceof ServerLevel serverLevel) {
+                if (reason.shouldDestroy()) {
+                    broadcastGhostRemoval(serverLevel);
+                }
                 ShahedLinkData.get(serverLevel).unlink(getUUID());
             }
             viewerDistances.clear();
