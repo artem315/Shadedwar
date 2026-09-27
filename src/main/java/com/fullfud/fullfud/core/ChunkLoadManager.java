@@ -31,10 +31,12 @@ public final class ChunkLoadManager {
                 chunkSource.addRegionTicket(DRONE_TICKET, pos, safeRadius, entityId);
                 return;
             }
+            // Keep the old region loaded until the replacement ticket is installed.
+            chunkSource.addRegionTicket(DRONE_TICKET, pos, safeRadius, entityId);
             removeTicket(existing.level, existing.pos, existing.radius, entityId);
+        } else {
+            chunkSource.addRegionTicket(DRONE_TICKET, pos, safeRadius, entityId);
         }
-
-        chunkSource.addRegionTicket(DRONE_TICKET, pos, safeRadius, entityId);
 
         ACTIVE_TICKETS.put(key, new TicketData(level, pos, safeRadius));
     }

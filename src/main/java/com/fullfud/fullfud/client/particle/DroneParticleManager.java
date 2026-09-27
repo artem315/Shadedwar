@@ -792,13 +792,13 @@ public final class DroneParticleManager {
         final float density
     ) {
         if (profile.heavy()) {
-            // 1. Initial blinding expanding flare (white-hot neutral incandescent)
+            // Warm initial flare so the soot cloud does not appear to snap from white to black.
             final ExplosionParticle flareExpand = new ExplosionParticle(
                 center.x, center.y + 0.1D, center.z,
                 0.0D, 0.0D, 0.0D,
                 2.0F, 22.0F,
                 0.95F, 0.0F,
-                1.0F, 0.98F, 0.94F,
+                1.0F, 0.82F, 0.62F,
                 0.0F, 0.0F,
                 0, 7,
                 0.0F, 1.0F,
@@ -816,7 +816,7 @@ public final class DroneParticleManager {
                 0.0D, 0.04D, 0.0D,
                 10.0F, 0.8F,
                 1.0F, 0.0F,
-                1.0F, 1.0F, 1.0F,
+                1.0F, 0.78F, 0.55F,
                 0.0F, 0.0F,
                 0, 12,
                 0.0F, 0.96F,
@@ -2134,6 +2134,12 @@ public final class DroneParticleManager {
 
         final double backSpeed = 0.14D + Math.min(0.18D, speed * 0.06D);
         final List<ExplosionParticle> newParticles = new ArrayList<>(steps + 3);
+        Vec3 right = forward.cross(new Vec3(0.0D, 1.0D, 0.0D));
+        if (right.lengthSqr() < 0.01D) {
+            right = forward.cross(new Vec3(1.0D, 0.0D, 0.0D));
+        }
+        right = right.normalize();
+        final Vec3 up = right.cross(forward).normalize();
 
         final net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
         final net.minecraft.world.entity.Entity cameraEntity = (minecraft != null) ? minecraft.getCameraEntity() : null;
@@ -2164,16 +2170,21 @@ public final class DroneParticleManager {
             final double jitterX = (RANDOM.nextDouble() - 0.5D) * spread;
             final double jitterY = (RANDOM.nextDouble() - 0.5D) * spread;
             final double jitterZ = (RANDOM.nextDouble() - 0.5D) * spread;
+            final int strand = i % 3 - 1;
+            final double strandSpread = (0.10D + (steps - i) * 0.018D) * strand;
+            final double ribbonWave = Math.sin((px + py + pz) * 0.7D + i * 1.8D) * 0.05D;
 
             final ResourceLocation smokeTex = TEX_SMOKE_CLUSTERS[RANDOM.nextInt(TEX_SMOKE_CLUSTERS.length)];
             final float baseColor = (i % 5 == 0 ? 0.48F : i % 3 == 0 ? 0.63F : 0.78F) + RANDOM.nextFloat() * 0.08F;
             final float startAlpha = (i % 4 == 0 ? 0.22F : 0.32F) + RANDOM.nextFloat() * 0.10F;
 
             final ExplosionParticle smokePuff = new ExplosionParticle(
-                px + jitterX, py + jitterY, pz + jitterZ,
-                -forward.x * backSpeed + (RANDOM.nextDouble() - 0.5D) * 0.025D,
-                -forward.y * backSpeed + 0.012D + (RANDOM.nextDouble() - 0.5D) * 0.015D,
-                -forward.z * backSpeed + (RANDOM.nextDouble() - 0.5D) * 0.025D,
+                px + right.x * strandSpread + up.x * ribbonWave + jitterX,
+                py + right.y * strandSpread + up.y * ribbonWave + jitterY,
+                pz + right.z * strandSpread + up.z * ribbonWave + jitterZ,
+                -forward.x * backSpeed + right.x * strand * 0.014D + (RANDOM.nextDouble() - 0.5D) * 0.025D,
+                -forward.y * backSpeed + right.y * strand * 0.014D + 0.012D + (RANDOM.nextDouble() - 0.5D) * 0.015D,
+                -forward.z * backSpeed + right.z * strand * 0.014D + (RANDOM.nextDouble() - 0.5D) * 0.025D,
                 (i % 4 == 0 ? 0.22F : 0.35F) + RANDOM.nextFloat() * 0.16F,
                 (i % 3 == 0 ? 1.75F : 1.25F) + RANDOM.nextFloat() * 0.55F,
                 startAlpha, 0.0F,

@@ -34,7 +34,7 @@ public final class Fp5NetworkHandlers {
         });
     }
 
-    private static Optional<Fp5FlamingoEntity> findFlamingo(final ServerPlayer sender, final UUID flamingoId) {
+    public static Optional<Fp5FlamingoEntity> findFlamingo(final ServerPlayer sender, final UUID flamingoId) {
         final ServerLevel currentLevel = sender.serverLevel();
         final Optional<Fp5FlamingoEntity> local = Fp5FlamingoEntity.find(currentLevel, flamingoId);
         if (local.isPresent()) {
@@ -55,4 +55,3 @@ public final class Fp5NetworkHandlers {
         return Optional.empty();
     }
 }
-

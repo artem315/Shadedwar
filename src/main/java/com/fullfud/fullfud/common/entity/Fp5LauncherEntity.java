@@ -38,6 +38,7 @@ public class Fp5LauncherEntity extends Entity implements GeoEntity {
     private final AnimatableInstanceCache animationCache = GeckoLibUtil.createInstanceCache(this);
     private int storedFlamingoId = -1;
     private UUID storedFlamingoUuid;
+    private boolean destroying;
 
     public Fp5LauncherEntity(final EntityType<? extends Fp5LauncherEntity> type, final Level level) {
         super(type, level);
@@ -128,14 +129,15 @@ public class Fp5LauncherEntity extends Entity implements GeoEntity {
 
     @Override
     public boolean hurt(final DamageSource source, final float amount) {
-        if (level().isClientSide || !isAlive()) {
+        if (level().isClientSide || !isAlive() || destroying) {
             return false;
         }
+        destroying = true;
         final Fp5FlamingoEntity mounted = getStoredFlamingo();
         if (mounted != null) {
-            mounted.detonateMounted();
             storedFlamingoUuid = null;
             storedFlamingoId = -1;
+            mounted.detonateMounted();
         }
         dropSelf();
         discard();
@@ -144,8 +146,13 @@ public class Fp5LauncherEntity extends Entity implements GeoEntity {
 
     @Override
     public void remove(final RemovalReason reason) {
-        if (!level().isClientSide && reason.shouldDestroy()) {
-            dropStoredFlamingoAsItem();
+        if (!level().isClientSide && reason.shouldDestroy() && !destroying) {
+            destroying = true;
+            final Fp5FlamingoEntity mounted = getStoredFlamingo();
+            if (mounted != null) {
+                clearStoredFlamingo();
+                mounted.detonateMounted();
+            }
         }
         super.remove(reason);
     }

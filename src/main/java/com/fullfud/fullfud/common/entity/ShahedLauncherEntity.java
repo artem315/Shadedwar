@@ -197,7 +197,7 @@ public class ShahedLauncherEntity extends Entity implements GeoEntity {
         if (player instanceof ServerPlayer serverPlayer) {
             FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShahedLinkPacket(drone.getUUID(), true));
         }
-        player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), true);
+        player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), false);
         clearStoredDrone();
     }
 
@@ -246,4 +246,3 @@ public class ShahedLauncherEntity extends Entity implements GeoEntity {
         return animationCache;
     }
 }
-

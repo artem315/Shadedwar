@@ -127,7 +127,7 @@ public class MonitorItem extends Item implements GeoItem {
         }
         setLinkedFp5(stack, flamingo.getUUID());
         if (openFp5Monitor(player, flamingo)) {
-            player.displayClientMessage(Component.translatable("message.fullfud.monitor.fp5_linked"), true);
+            player.displayClientMessage(Component.translatable("message.fullfud.monitor.fp5_linked"), false);
         } else {
             player.displayClientMessage(Component.translatable("message.fullfud.monitor.open_failed"), true);
         }
@@ -252,7 +252,6 @@ public class MonitorItem extends Item implements GeoItem {
                 serverPlayer.displayClientMessage(Component.translatable("message.fullfud.monitor.open_failed"), true);
             }
         }, () -> {
-            clearLinkedFp5(stack);
             serverPlayer.displayClientMessage(Component.translatable("message.fullfud.monitor.fp5_missing"), true);
         });
     }

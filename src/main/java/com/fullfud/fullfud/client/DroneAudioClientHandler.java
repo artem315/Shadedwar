@@ -144,7 +144,8 @@ public final class DroneAudioClientHandler {
         }
         final boolean muteWhenLoaded = switch (droneType) {
             case TYPE_FPV -> FullfudClientConfig.CLIENT.droneAudioMuteRemoteFpvWhenLoaded.get();
-            case TYPE_SHAHED, TYPE_SHAHED_238 -> FullfudClientConfig.CLIENT.droneAudioMuteRemoteShahedWhenLoaded.get();
+            // The packet loop is the single Shahed sound source on both sides of the render boundary.
+            case TYPE_SHAHED, TYPE_SHAHED_238 -> false;
             default -> false;
         };
         return muteWhenLoaded && isDroneEntityPresent(mc, droneId);

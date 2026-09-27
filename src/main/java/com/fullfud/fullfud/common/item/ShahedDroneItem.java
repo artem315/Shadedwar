@@ -60,7 +60,7 @@ public class ShahedDroneItem extends Item {
             if (player instanceof ServerPlayer serverPlayer) {
                 drone.assignOwner(serverPlayer);
             }
-            player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), true);
+            player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), false);
             return;
         }
 
@@ -69,7 +69,7 @@ public class ShahedDroneItem extends Item {
             if (player instanceof ServerPlayer serverPlayer) {
                 drone.assignOwner(serverPlayer);
             }
-            player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), true);
+            player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), false);
         }
     }
 

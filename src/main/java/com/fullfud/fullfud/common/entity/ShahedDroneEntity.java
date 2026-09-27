@@ -300,7 +300,14 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         if (isOnLauncher()) {
             if (!level().isClientSide) {
                 handleLauncherAttachment();
+                if (isRemoved()) {
+                    return;
+                }
+                ensureChunkTicket();
                 broadcastEngineAudio();
+                if (tickCount % GHOST_BROADCAST_INTERVAL_TICKS == 0) {
+                    broadcastGhostState();
+                }
             }
             return;
         }
@@ -313,10 +320,6 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         }
 
         if (!level().isClientSide() || isControlledByLocalInstance()) {
-            if (!level().isClientSide() && controllingPlayer == null) {
-                bodyPitch = bodyPitch * 0.9f;
-                bodyRoll = bodyRoll * 0.9f;
-            }
             this.setXRot((float) bodyPitch);
             updateControlTimeout();
             if (!level().isClientSide()) {
@@ -1000,7 +1003,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
                 }
                 MonitorItem.setLinkedDrone(heldItem, this.getUUID());
                 FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShahedLinkPacket(this.getUUID(), true));
-                player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), true);
+                player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), false);
             }
             return InteractionResult.sidedSuccess(level().isClientSide);
         }
@@ -1828,15 +1831,14 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         }
 
         final ControlSession endedSession = controlSession;
-        // Releasing the monitor must not leave a timed-out dive command active.
+        // Release the controls, but preserve the drone's attitude and angular momentum.
+        // Otherwise leaving the camera immediately pulls a diving drone level.
         controlForward = 0.0F;
         controlStrafe = 0.0F;
         controlVertical = 0.0F;
         inputMousePitchDelta = 0.0F;
         inputMouseRollDelta = 0.0F;
         controlTimeout = 0;
-        rollRate = 0.0D;
-        pitchRate = 0.0D;
         if (player != null) {
             restoreRemoteController(player, endedSession);
             clearRemoteTag(player);
@@ -1997,7 +1999,8 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     }
 
     private boolean shouldKeepChunksLoaded() {
-        return keepChunksLoadedWithoutPlayer || controllingPlayer != null || armed || !viewerDistances.isEmpty() || stationaryTicks < STATIONARY_UNLOAD_THRESHOLD_TICKS;
+        return isOnLauncher() || keepChunksLoadedWithoutPlayer || controllingPlayer != null || armed
+            || !viewerDistances.isEmpty() || stationaryTicks < STATIONARY_UNLOAD_THRESHOLD_TICKS;
     }
 
     private void syncRemoteController(final ServerPlayer player) {

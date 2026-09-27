@@ -265,7 +265,8 @@ public final class ShahedClientHandler {
         } else {
             restoreLocalPlayerState();
         }
-        if (!FullfudClientConfig.CLIENT.shahedUseLocalEntityAudio.get()) {
+        if (FullfudClientConfig.CLIENT.droneAudioRemoteEnabled.get()
+            || !FullfudClientConfig.CLIENT.shahedUseLocalEntityAudio.get()) {
             ENGINE_AUDIO.values().forEach(EngineAudioController::stop);
             ENGINE_AUDIO.clear();
             updateGhostState(minecraft);

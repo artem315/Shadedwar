@@ -1,6 +1,6 @@
 package com.fullfud.fullfud.core.network.packet;
 
-import com.fullfud.fullfud.common.entity.Fp5FlamingoEntity;
+import com.fullfud.fullfud.core.network.handler.Fp5NetworkHandlers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,7 +30,7 @@ public record Fp5TargetPacket(UUID flamingoId, int x, int y, int z) {
                     && flamingoId.equals(menu.getFlamingoId())
                     && Math.abs((long) x) <= 30000000L && Math.abs((long) z) <= 30000000L
                     && y >= -2048 && y <= 2048) {
-                    Fp5FlamingoEntity.find(sender.serverLevel(), flamingoId)
+                    Fp5NetworkHandlers.findFlamingo(sender, flamingoId)
                         .ifPresent(flamingo -> flamingo.setMonitorTarget(new BlockPos(x, y, z)));
                 }
             });

@@ -4,6 +4,7 @@ import com.fullfud.fullfud.common.item.MonitorItem;
 import com.fullfud.fullfud.core.ChunkLoadManager;
 import com.fullfud.fullfud.core.DroneExplosionEffects;
 import com.fullfud.fullfud.core.FullfudRegistries;
+import com.fullfud.fullfud.core.data.ShahedLinkData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleOptions;
@@ -31,6 +32,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
@@ -212,7 +214,15 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         if (level == null || flamingoId == null) {
             return Optional.empty();
         }
-        final Entity entity = level.getEntity(flamingoId);
+        Entity entity = level.getEntity(flamingoId);
+        if (entity == null) {
+            final Optional<ChunkPos> lastChunk = ShahedLinkData.get(level).lastChunk(flamingoId);
+            if (lastChunk.isPresent()) {
+                final ChunkPos pos = lastChunk.get();
+                level.getChunk(pos.x, pos.z);
+                entity = level.getEntity(flamingoId);
+            }
+        }
         return entity instanceof Fp5FlamingoEntity flamingo && flamingo.isAlive()
             ? Optional.of(flamingo)
             : Optional.empty();
@@ -341,11 +351,9 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
             }
             if (!level().isClientSide()) {
                 handleClientSync();
-                stationaryTicks++;
-                if (stationaryTicks < STATIONARY_UNLOAD_THRESHOLD_TICKS && level() instanceof ServerLevel serverLevel) {
-                    ChunkLoadManager.ensureChunksLoaded(serverLevel, getId(), chunkPosition(), 3);
-                } else if (level() instanceof ServerLevel serverLevel) {
-                    ChunkLoadManager.releaseChunks(serverLevel, getId());
+                if (level() instanceof ServerLevel serverLevel) {
+                    ShahedLinkData.get(serverLevel).updateChunk(getUUID(), chunkPosition());
+                    ChunkLoadManager.ensureChunksLoaded(serverLevel, getId(), chunkPosition(), 1);
                 }
             }
             updateBoundingBox();
@@ -362,6 +370,7 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
                 stationaryTicks++;
             }
             if (level() instanceof ServerLevel serverLevel) {
+                ShahedLinkData.get(serverLevel).updateChunk(getUUID(), chunkPosition());
                 if (stationaryTicks < STATIONARY_UNLOAD_THRESHOLD_TICKS) {
                     ChunkLoadManager.ensureChunksLoaded(serverLevel, getId(), chunkPosition(), 3);
                 } else {

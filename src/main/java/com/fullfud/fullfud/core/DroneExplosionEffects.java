@@ -347,6 +347,7 @@ public final class DroneExplosionEffects {
             ? impactDirection.normalize()
             : null;
         final int spawnCount = ExplosionShrapnelEntity.allowedSpawnCount(level, profile.shrapnelCount());
+        Vec3 safeSpawnPosition = origin;
         for (int i = 0; i < spawnCount; i++) {
             final Vec3 direction = switch (profile.shrapnelPattern()) {
                 case FORWARD_CONE -> forwardDirection != null
@@ -355,7 +356,11 @@ public final class DroneExplosionEffects {
                 case SPHERICAL -> randomSphericalDirection(level);
                 case HORIZONTAL_RING -> randomHorizontalDirection(level);
             };
-            final Vec3 spawnPosition = resolveShrapnelSpawnPosition(level, origin, direction);
+            // Reuse a checked origin for a small group of fragments.
+            if (i % 8 == 0) {
+                safeSpawnPosition = resolveShrapnelSpawnPosition(level, origin, direction);
+            }
+            final Vec3 spawnPosition = safeSpawnPosition;
 
             final ExplosionShrapnelEntity shrapnel = new ExplosionShrapnelEntity(
                 FullfudRegistries.EXPLOSION_SHRAPNEL_ENTITY.get(),
