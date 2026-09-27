@@ -28,7 +28,7 @@ public class ShahedDroneRenderer extends GeoEntityRenderer<ShahedDroneEntity> {
             poseStack.mulPose(Axis.YP.rotationDegrees(-entityYaw));
         }
         poseStack.mulPose(Axis.ZP.rotationDegrees(entity.getVisualRoll(partialTick)));
-        
+        poseStack.scale(ShahedDroneEntity.SCALE, ShahedDroneEntity.SCALE, ShahedDroneEntity.SCALE);
         poseStack.translate(0.0D, -0.25D, 0.0D);
         
         final int skyLight = Math.max(LightTexture.sky(packedLight), 11);

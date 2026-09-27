@@ -165,11 +165,12 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     private static final double ENGINE_SPOOL_RATE = 0.05D;
     private static final double STALL_ANGLE = Math.toRadians(17.0D);
     private static final double PROJECTILE_DAMAGE_DECEL_PER_SEC = 24.0D;
+    public static final float SCALE = 1.5F;
     private static final double DAMAGE_SMOKE_PARTICLES_PER_TICK = 7.0D / 20.0D;
-    private static final double DAMAGE_SMOKE_SPREAD = 0.7D;
+    private static final double DAMAGE_SMOKE_SPREAD = 0.7D * SCALE;
     private static final double SLOW_SPEED_SCALE = 0.5D;
     private static final int SHAHED_CHUNK_RADIUS = 3;
-    private static final EntityDimensions SHAHEED_DIMENSIONS = EntityDimensions.scalable(3.0F, 1.0F);
+    private static final EntityDimensions SHAHEED_DIMENSIONS = EntityDimensions.scalable(3.0F * SCALE, 1.0F * SCALE);
     private final Map<UUID, Integer> viewerDistances = new HashMap<>();
     private float controlForward;
     private float controlStrafe;
@@ -233,9 +234,9 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     private final AnimatableInstanceCache animationCache = GeckoLibUtil.createInstanceCache(this);
     private static final RawAnimation IDLE_ANIMATION = RawAnimation.begin().thenLoop("animation.model.idle");
     private static final RawAnimation RUN_ANIMATION = RawAnimation.begin().thenLoop("animation.model.running");
-    private static final double LAUNCHER_VERTICAL_OFFSET = 0.25D;
-    private static final double LAUNCHER_FORWARD_OFFSET = 2.0D;
-    private static final double LAUNCHER_UP_OFFSET = 10.0D;
+    private static final double LAUNCHER_VERTICAL_OFFSET = 0.25D * SCALE;
+    private static final double LAUNCHER_FORWARD_OFFSET = 2.0D * SCALE;
+    private static final double LAUNCHER_UP_OFFSET = 10.0D * SCALE;
     private static final double LAUNCHER_LAUNCH_SPEED = 260.0D / 3.6D;
     private static final float LAUNCHER_LAUNCH_PITCH = -12.5F;
     private int mountedLauncherId = -1;
@@ -1012,7 +1013,10 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
                 }
                 MonitorItem.setLinkedDrone(heldItem, this.getUUID());
                 FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShahedLinkPacket(this.getUUID(), true));
-                player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), false);
+                final String linkMsgKey = (this instanceof Shahed238DroneEntity)
+                    ? "message.fullfud.monitor.linked_238"
+                    : "message.fullfud.monitor.linked";
+                player.displayClientMessage(Component.translatable(linkMsgKey), true);
             }
             return InteractionResult.sidedSuccess(level().isClientSide);
         }
@@ -1025,7 +1029,10 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
             if (!player.addItem(droneStack)) {
                 spawnAtLocation(droneStack);
             }
-            player.displayClientMessage(Component.translatable("message.fullfud.shahed.picked_up"), true);
+            final String pickupMsgKey = (this instanceof Shahed238DroneEntity)
+                ? "message.fullfud.shahed.picked_up_238"
+                : "message.fullfud.shahed.picked_up";
+            player.displayClientMessage(Component.translatable(pickupMsgKey), true);
             discard();
             return InteractionResult.CONSUME;
         }
@@ -1277,8 +1284,8 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     }
 
     private void updateBoundingBox() {
-        final float width = 3.0F;
-        final float height = 1.0F;
+        final float width = 3.0F * SCALE;
+        final float height = 1.0F * SCALE;
         final float halfWidth = width * 0.5F;
         final Vec3 center = position();
         final double yawRad = Math.toRadians(getYRot());
@@ -1310,7 +1317,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
 
     @Override
     public AABB getBoundingBoxForCulling() {
-        return super.getBoundingBoxForCulling().inflate(1.5D, 1.5D, 1.5D);
+        return super.getBoundingBoxForCulling().inflate(1.5D * SCALE, 1.5D * SCALE, 1.5D * SCALE);
     }
 
     private double computeSignalDistance(final ServerPlayer viewer) {

@@ -19,6 +19,7 @@ public class ShahedLauncherRenderer extends GeoEntityRenderer<ShahedLauncherEnti
     public void render(final ShahedLauncherEntity entity, final float entityYaw, final float partialTick, final PoseStack poseStack, final MultiBufferSource bufferSource, final int packedLight) {
         poseStack.pushPose();
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - entityYaw));
+        poseStack.scale(ShahedLauncherEntity.SCALE, ShahedLauncherEntity.SCALE, ShahedLauncherEntity.SCALE);
         super.render(entity, entityYaw, partialTick, poseStack, bufferSource, packedLight);
         poseStack.popPose();
     }

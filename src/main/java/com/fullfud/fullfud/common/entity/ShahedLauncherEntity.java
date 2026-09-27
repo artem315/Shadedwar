@@ -33,6 +33,8 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 
 public class ShahedLauncherEntity extends Entity implements GeoEntity {
+    public static final float SCALE = 1.5F;
+    private static final net.minecraft.world.entity.EntityDimensions LAUNCHER_SIZE = net.minecraft.world.entity.EntityDimensions.scalable(1.0F * SCALE, 1.0F * SCALE);
     private final AnimatableInstanceCache animationCache = GeckoLibUtil.createInstanceCache(this);
     private int storedDroneId = -1;
     private UUID storedDroneUuid;
@@ -197,7 +199,10 @@ public class ShahedLauncherEntity extends Entity implements GeoEntity {
         if (player instanceof ServerPlayer serverPlayer) {
             FullfudNetwork.getChannel().send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShahedLinkPacket(drone.getUUID(), true));
         }
-        player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), false);
+        final String msgKey = (drone instanceof Shahed238DroneEntity)
+            ? "message.fullfud.monitor.linked_238"
+            : "message.fullfud.monitor.linked";
+        player.displayClientMessage(Component.translatable(msgKey), true);
         clearStoredDrone();
     }
 
@@ -227,6 +232,16 @@ public class ShahedLauncherEntity extends Entity implements GeoEntity {
 
     private void dropSelf() {
         spawnAtLocation(new ItemStack(FullfudRegistries.SHAHED_LAUNCHER_ITEM.get()));
+    }
+
+    @Override
+    public net.minecraft.world.entity.EntityDimensions getDimensions(final net.minecraft.world.entity.Pose pose) {
+        return LAUNCHER_SIZE;
+    }
+
+    @Override
+    public net.minecraft.world.phys.AABB getBoundingBoxForCulling() {
+        return super.getBoundingBoxForCulling().inflate(2.0D * SCALE, 1.5D * SCALE, 2.0D * SCALE);
     }
 
     @Override

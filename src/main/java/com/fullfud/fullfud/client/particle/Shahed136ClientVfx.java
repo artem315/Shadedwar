@@ -17,9 +17,9 @@ public final class Shahed136ClientVfx {
     private static final Map<UUID, ShahedDroneEntity> TRACKED_DRONES = new ConcurrentHashMap<>();
     private static final Map<UUID, Vec3> LAST_RENDER_ANCHORS = new ConcurrentHashMap<>();
 
-    // Propeller / rear engine exhaust is 1.40m behind entity center and 0.10m down
-    private static final double EXHAUST_REAR_OFFSET = 1.40D;
-    private static final double EXHAUST_DOWN_OFFSET = 0.10D;
+    // Propeller / rear engine exhaust is 1.40m behind entity center and 0.10m down (scaled with model)
+    private static final double EXHAUST_REAR_OFFSET = 1.40D * ShahedDroneEntity.SCALE;
+    private static final double EXHAUST_DOWN_OFFSET = 0.10D * ShahedDroneEntity.SCALE;
 
     private Shahed136ClientVfx() {
     }

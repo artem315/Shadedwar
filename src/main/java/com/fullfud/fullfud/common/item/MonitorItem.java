@@ -45,7 +45,7 @@ public class MonitorItem extends Item implements GeoItem {
 
     @Override
     public boolean isFoil(final ItemStack stack) {
-        return getLinkedDrone(stack).isPresent() || getLinkedFp5(stack).isPresent();
+        return false;
     }
 
     @Override
@@ -127,7 +127,7 @@ public class MonitorItem extends Item implements GeoItem {
         }
         setLinkedFp5(stack, flamingo.getUUID());
         if (openFp5Monitor(player, flamingo)) {
-            player.displayClientMessage(Component.translatable("message.fullfud.monitor.fp5_linked"), false);
+            player.displayClientMessage(Component.translatable("message.fullfud.monitor.fp5_linked"), true);
         } else {
             player.displayClientMessage(Component.translatable("message.fullfud.monitor.open_failed"), true);
         }

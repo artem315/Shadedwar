@@ -673,8 +673,8 @@ public final class ShahedClientHandler {
             final Vec3 rolledUp = localUp.scale(cosRoll).add(localRight.scale(sinRoll));
             final Vec3 rolledDown = rolledUp.scale(-1.0D);
 
-            final double rearOffset = isJet ? 1.75D : 1.40D;
-            final double downOffset = isJet ? 0.125D : 0.10D;
+            final double rearOffset = (isJet ? 1.75D : 1.40D) * ShahedDroneEntity.SCALE;
+            final double downOffset = (isJet ? 0.125D : 0.10D) * ShahedDroneEntity.SCALE;
             final Vec3 currAnchor = new Vec3(x, y, z)
                 .subtract(forward.scale(rearOffset))
                 .add(rolledDown.scale(downOffset));

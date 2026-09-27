@@ -145,7 +145,7 @@ public final class FullfudRegistries {
 
     public static final RegistryObject<EntityType<ShahedDroneEntity>> SHAHED_ENTITY = ENTITY_TYPES.register("shahed_136", () ->
         EntityType.Builder.<ShahedDroneEntity>of(ShahedDroneEntity::new, MobCategory.MISC)
-            .sized(3.0F, 1.0F)
+            .sized(3.0F * ShahedDroneEntity.SCALE, 1.0F * ShahedDroneEntity.SCALE)
             .clientTrackingRange(2000)
             .updateInterval(1)
             .setShouldReceiveVelocityUpdates(true)
@@ -154,7 +154,7 @@ public final class FullfudRegistries {
 
     public static final RegistryObject<EntityType<Shahed238DroneEntity>> SHAHED_238_ENTITY = ENTITY_TYPES.register("shahed_238", () ->
         EntityType.Builder.<Shahed238DroneEntity>of(Shahed238DroneEntity::new, MobCategory.MISC)
-            .sized(3.0F, 1.0F)
+            .sized(3.0F * ShahedDroneEntity.SCALE, 1.0F * ShahedDroneEntity.SCALE)
             .clientTrackingRange(2000)
             .updateInterval(1)
             .setShouldReceiveVelocityUpdates(true)
@@ -181,7 +181,7 @@ public final class FullfudRegistries {
 
     public static final RegistryObject<EntityType<ShahedLauncherEntity>> SHAHED_LAUNCHER_ENTITY = ENTITY_TYPES.register("shahed_launcher", () ->
         EntityType.Builder.<ShahedLauncherEntity>of(ShahedLauncherEntity::new, MobCategory.MISC)
-            .sized(1.0F, 1.0F)
+            .sized(1.0F * ShahedLauncherEntity.SCALE, 1.0F * ShahedLauncherEntity.SCALE)
             .clientTrackingRange(64)
             .updateInterval(10)
             .build(resource("shahed_launcher").toString())

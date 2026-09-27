@@ -202,10 +202,10 @@ public final class DroneParticleManager {
 
             switch (expType) {
                 case DroneExplosionPacket.TYPE_SHAHED -> {
-                    scaleMul = 2.4F;
-                    sparkCount = 55;
-                    smokeCount = 38;
-                    debrisCount = 35;
+                    scaleMul = 4.8F;
+                    sparkCount = 110;
+                    smokeCount = 76;
+                    debrisCount = 70;
                 }
                 case DroneExplosionPacket.TYPE_FPV_STRIKE -> {
                     scaleMul = 1.15F;
@@ -468,10 +468,10 @@ public final class DroneParticleManager {
         // to the scene lighting pass and never writes a vanilla light level.
         final float lightRadius = expType == DroneExplosionPacket.TYPE_FLAMINGO
             ? 42.0F
-            : expType == DroneExplosionPacket.TYPE_SHAHED ? 18.0F : 9.0F;
+            : expType == DroneExplosionPacket.TYPE_SHAHED ? 36.0F : 9.0F;
         final float lightIntensity = expType == DroneExplosionPacket.TYPE_FLAMINGO
             ? 5.8F
-            : expType == DroneExplosionPacket.TYPE_SHAHED ? 2.6F : 1.45F;
+            : expType == DroneExplosionPacket.TYPE_SHAHED ? 4.5F : 1.45F;
         VfxLightingRegistry.addTransientLight(
             new Vec3(x, y + 0.3D, z),
             3.8F,
@@ -537,9 +537,9 @@ public final class DroneParticleManager {
                 1.85F * powerFactor, 1.15F
             );
             case DroneExplosionPacket.TYPE_SHAHED -> new ExplosionVisualProfile(
-                2.20F * powerFactor, 52, 68, 66, 42, 52,
-                30.0F * powerFactor, 18, 30.0F * powerFactor,
-                3.10F * powerFactor, 2.4F
+                4.40F * powerFactor, 110, 145, 135, 90, 110,
+                58.0F * powerFactor, 24, 55.0F * powerFactor,
+                4.80F * powerFactor, 3.6F
             );
             case DroneExplosionPacket.TYPE_FLAMINGO -> new ExplosionVisualProfile(
                 4.20F * powerFactor, 140, 190, 130, 64, 110,
@@ -2082,8 +2082,8 @@ public final class DroneParticleManager {
             final ResourceLocation smokeTex = TEX_SMOKE_CLUSTERS[RANDOM.nextInt(TEX_SMOKE_CLUSTERS.length)];
             final float baseColor = damaged ? (0.15F + RANDOM.nextFloat() * 0.15F) : (0.60F + RANDOM.nextFloat() * 0.15F);
             final float startAlpha = damaged ? (0.60F + RANDOM.nextFloat() * 0.20F) : (0.22F + RANDOM.nextFloat() * 0.10F);
-            final float initialScale = damaged ? (0.45F + RANDOM.nextFloat() * 0.15F) : (0.28F + RANDOM.nextFloat() * 0.10F);
-            final float targetScale = damaged ? (1.80F + RANDOM.nextFloat() * 0.60F) : (1.10F + RANDOM.nextFloat() * 0.35F);
+            final float initialScale = damaged ? (0.65F + RANDOM.nextFloat() * 0.20F) : (0.42F + RANDOM.nextFloat() * 0.15F);
+            final float targetScale = damaged ? (2.70F + RANDOM.nextFloat() * 0.90F) : (1.65F + RANDOM.nextFloat() * 0.50F);
 
             final ExplosionParticle smokePuff = new ExplosionParticle(
                 px + jitterX, py + jitterY, pz + jitterZ,
@@ -2188,8 +2188,8 @@ public final class DroneParticleManager {
                 -forward.x * backSpeed + right.x * strand * 0.014D + (RANDOM.nextDouble() - 0.5D) * 0.025D,
                 -forward.y * backSpeed + right.y * strand * 0.014D + 0.012D + (RANDOM.nextDouble() - 0.5D) * 0.015D,
                 -forward.z * backSpeed + right.z * strand * 0.014D + (RANDOM.nextDouble() - 0.5D) * 0.025D,
-                (i % 4 == 0 ? 0.22F : 0.35F) + RANDOM.nextFloat() * 0.16F,
-                (i % 3 == 0 ? 1.75F : 1.25F) + RANDOM.nextFloat() * 0.55F,
+                ((i % 4 == 0 ? 0.33F : 0.50F) + RANDOM.nextFloat() * 0.22F),
+                ((i % 3 == 0 ? 2.60F : 1.85F) + RANDOM.nextFloat() * 0.75F),
                 startAlpha, 0.0F,
                 baseColor, baseColor * 0.98F, baseColor * 0.96F,
                 RANDOM.nextFloat() * 6.28F, (RANDOM.nextFloat() - 0.5F) * 0.03F,

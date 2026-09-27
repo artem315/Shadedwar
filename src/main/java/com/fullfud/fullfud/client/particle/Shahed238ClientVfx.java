@@ -19,9 +19,9 @@ public final class Shahed238ClientVfx {
     private static final Map<UUID, Vec3> LAST_POSITIONS = new ConcurrentHashMap<>();
     private static final Map<UUID, Vec3> LAST_NOZZLE_ANCHORS = new ConcurrentHashMap<>();
 
-    // The jet exhaust nozzle is 1.75m behind entity center and 0.125m down
-    private static final double NOZZLE_REAR_OFFSET = 1.75D;
-    private static final double NOZZLE_DOWN_OFFSET = 0.125D;
+    // The jet exhaust nozzle is 1.75m behind entity center and 0.125m down (scaled with model)
+    private static final double NOZZLE_REAR_OFFSET = 1.75D * com.fullfud.fullfud.common.entity.ShahedDroneEntity.SCALE;
+    private static final double NOZZLE_DOWN_OFFSET = 0.125D * com.fullfud.fullfud.common.entity.ShahedDroneEntity.SCALE;
 
     private Shahed238ClientVfx() {
     }

@@ -45,7 +45,7 @@ public final class DroneExplosionEffects {
 
     private static final BlastProfile FPV_PROFILE = new BlastProfile(DroneExplosionPacket.TYPE_FPV_STANDARD, 1.0F, 180, 18.0F, 25.0D, 4.0F, 12.0F, 4.2F, ShrapnelPattern.HORIZONTAL_RING, 0.0F);
     private static final BlastProfile FPV_STRIKE_PROFILE = new BlastProfile(DroneExplosionPacket.TYPE_FPV_STRIKE, 1.15F, 180, 18.0F, 25.0D, 4.0F, 12.0F, 4.2F, ShrapnelPattern.FORWARD_CONE, 16.0F);
-    private static final BlastProfile SHAHED_PROFILE = new BlastProfile(DroneExplosionPacket.TYPE_SHAHED, 2.4F, 400, 15.0F, 200.0D, 10.0F, 50.0F, 3.8F, ShrapnelPattern.SPHERICAL, 0.0F);
+    private static final BlastProfile SHAHED_PROFILE = new BlastProfile(DroneExplosionPacket.TYPE_SHAHED, 4.8F, 800, 24.0F, 380.0D, 20.0F, 90.0F, 4.6F, ShrapnelPattern.SPHERICAL, 0.0F);
     private static final BlastProfile FLAMINGO_PROFILE = new BlastProfile(DroneExplosionPacket.TYPE_FLAMINGO, 8.0F, 1200, 42.0F, 360.0D, 32.0F, 110.0F, 4.0F, ShrapnelPattern.SPHERICAL, 0.0F);
 
     private static final float DISTANT_CLOSE_RADIUS = 24.0F;

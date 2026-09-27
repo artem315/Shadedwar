@@ -54,13 +54,16 @@ public class ShahedDroneItem extends Item {
     private static void linkWithMonitor(final Player player, final ShahedDroneEntity drone) {
         final ItemStack mainHand = player.getMainHandItem();
         final ItemStack offHand = player.getOffhandItem();
+        final String msgKey = (drone instanceof com.fullfud.fullfud.common.entity.Shahed238DroneEntity)
+            ? "message.fullfud.monitor.linked_238"
+            : "message.fullfud.monitor.linked";
 
         if (mainHand.getItem() instanceof MonitorItem) {
             MonitorItem.setLinkedDrone(mainHand, drone.getUUID());
             if (player instanceof ServerPlayer serverPlayer) {
                 drone.assignOwner(serverPlayer);
             }
-            player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), false);
+            player.displayClientMessage(Component.translatable(msgKey), true);
             return;
         }
 
@@ -69,7 +72,7 @@ public class ShahedDroneItem extends Item {
             if (player instanceof ServerPlayer serverPlayer) {
                 drone.assignOwner(serverPlayer);
             }
-            player.displayClientMessage(Component.translatable("message.fullfud.monitor.linked"), false);
+            player.displayClientMessage(Component.translatable(msgKey), true);
         }
     }
 
