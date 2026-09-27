@@ -66,8 +66,32 @@ public final class DroneExplosionEffects {
         final DronePreset preset,
         @Nullable final Vec3 impactDirection
     ) {
-        final BlastProfile profile = preset == DronePreset.STRIKE_7INCH ? FPV_STRIKE_PROFILE : FPV_PROFILE;
-        applyExplosionEffects(level, source, attacker, profile, impactDirection);
+        applyExplosionEffects(level, source, attacker, fpvProfile(preset), impactDirection);
+    }
+
+    public static ImpactPresentation presentFpvExplosion(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        final DronePreset preset,
+        @Nullable final Vec3 impactDirection
+    ) {
+        return presentExplosionEffects(level, source, attacker, fpvProfile(preset), impactDirection, null);
+    }
+
+    public static void finishFpvExplosion(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        final DronePreset preset,
+        @Nullable final Vec3 impactDirection,
+        final ImpactPresentation presentation
+    ) {
+        applyExplosionDamage(level, source, attacker, presentation, fpvProfile(preset), impactDirection);
+    }
+
+    private static BlastProfile fpvProfile(final DronePreset preset) {
+        return preset == DronePreset.STRIKE_7INCH ? FPV_STRIKE_PROFILE : FPV_PROFILE;
     }
 
     public static void afterShahedExplosion(final ServerLevel level, final Entity source, @Nullable final LivingEntity attacker) {

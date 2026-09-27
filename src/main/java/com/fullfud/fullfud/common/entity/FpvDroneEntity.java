@@ -694,7 +694,7 @@ public class FpvDroneEntity extends Entity implements GeoEntity {
         this.lerpZ = z;
         this.lerpYRot = yaw;
         this.lerpXRot = pitch;
-        this.lerpSteps = posRotationIncrements;
+        this.lerpSteps = 1;
     }
 
     private void updateQuaternionFromEuler() {
@@ -1004,20 +1004,16 @@ public class FpvDroneEntity extends Entity implements GeoEntity {
         final ServerPlayer controller = getController();
         final DronePreset preset = getDronePreset();
         final Vec3 explosionDirection = resolveExplosionDirection();
-        prepareForDestruction();
-        spawnTntEffect(controller, preset, explosionDirection);
-        discard();
-    }
-
-    private void spawnTntEffect(
-        @javax.annotation.Nullable final ServerPlayer controller,
-        final DronePreset preset,
-        final Vec3 explosionDirection
-    ) {
         if (!(level() instanceof ServerLevel serverLevel)) {
+            prepareForDestruction();
+            discard();
             return;
         }
-        DroneExplosionEffects.afterFpvExplosion(serverLevel, this, controller, preset, explosionDirection);
+        final DroneExplosionEffects.ImpactPresentation presentation =
+            DroneExplosionEffects.presentFpvExplosion(serverLevel, this, controller, preset, explosionDirection);
+        prepareForDestruction();
+        DroneExplosionEffects.finishFpvExplosion(serverLevel, this, controller, preset, explosionDirection, presentation);
+        discard();
     }
 
     private Vec3 resolveBlockImpactOrigin(final Vec3 start, final Vec3 end) {

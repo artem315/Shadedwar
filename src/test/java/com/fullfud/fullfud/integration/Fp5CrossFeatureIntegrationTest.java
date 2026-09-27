@@ -2,15 +2,39 @@ package com.fullfud.fullfud.integration;
 
 import com.fullfud.fullfud.common.entity.Fp5FlamingoEntity;
 import com.fullfud.fullfud.core.network.packet.DroneExplosionPacket;
+import com.fullfud.fullfud.core.network.packet.Fp5GhostUpdatePacket;
 import com.fullfud.fullfud.testing.Fp5Assertions;
 import com.fullfud.fullfud.testing.Fp5Test;
 import com.fullfud.fullfud.testing.Fp5TestSuite;
+import io.netty.buffer.Unpooled;
+import net.minecraft.network.FriendlyByteBuf;
+
+import java.util.UUID;
 
 /**
  * End-to-End integration test suite for cross-feature coupling and full mission flight profiles (Tiers 3 & 4 / Features F1-F12).
  */
 @Fp5TestSuite(name = "FP-5 Flamingo Cross-Feature & E2E Integration", features = {"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"}, milestone = "M4")
 public class Fp5CrossFeatureIntegrationTest {
+
+    @Fp5Test(tier = 1, features = {"F6", "F8"}, description = "Flight updates and impact removal preserve FP-5 ghost packet state")
+    public void testGhostPacketRoundTrip() {
+        final UUID id = UUID.randomUUID();
+        for (final boolean removed : new boolean[] {false, true}) {
+            final Fp5GhostUpdatePacket original = new Fp5GhostUpdatePacket(
+                id, 320.5D, 72.0D, -190.25D, 45.0F, -25.0F, 3.0F,
+                false, true, false, removed);
+            final FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+            try {
+                original.encode(buffer);
+                Fp5Assertions.assertEquals(original, Fp5GhostUpdatePacket.decode(buffer),
+                    "FP-5 ghost update must preserve the removal flag and flight state");
+                Fp5Assertions.assertEquals(0, buffer.readableBytes(), "FP-5 ghost update must consume all bytes");
+            } finally {
+                buffer.release();
+            }
+        }
+    }
 
     // ---------------------------------------------------------------------------------------------
     // Tier 3: Cross-Feature Interactions

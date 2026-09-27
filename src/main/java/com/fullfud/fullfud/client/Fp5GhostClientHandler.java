@@ -35,6 +35,11 @@ public final class Fp5GhostClientHandler {
             GHOSTS.clear();
             lastLevel = minecraft.level;
         }
+        if (packet.removed()) {
+            GHOSTS.remove(packet.id());
+            Fp5ClientVfx.remove(packet.id());
+            return;
+        }
         GHOSTS.computeIfAbsent(packet.id(), ignored -> new Ghost(minecraft.level, packet))
             .update(packet, minecraft.level.getGameTime());
     }
@@ -70,7 +75,9 @@ public final class Fp5GhostClientHandler {
             }
             final Ghost ghost = entry.getValue();
             final Fp5GhostUpdatePacket data = ghost.current;
-            final float blend = Mth.clamp((now - ghost.lastUpdateTick + event.getPartialTick()) / 4.0F, 0.0F, 1.0F);
+            final float blend = data.launched()
+                ? 1.0F + Mth.clamp(now - ghost.lastUpdateTick + event.getPartialTick(), 0.0F, 1.0F)
+                : Mth.clamp((now - ghost.lastUpdateTick + event.getPartialTick()) / 4.0F, 0.0F, 1.0F);
             final double x = Mth.lerp(blend, ghost.previous.x(), data.x());
             final double y = Mth.lerp(blend, ghost.previous.y(), data.y());
             final double z = Mth.lerp(blend, ghost.previous.z(), data.z());

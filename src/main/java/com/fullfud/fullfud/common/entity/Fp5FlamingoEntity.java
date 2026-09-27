@@ -389,15 +389,27 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
     }
 
     private void broadcastGhostState() {
-        if (!level().isClientSide() && tickCount % 4 == 0 && level() instanceof ServerLevel serverLevel) {
+        if (!level().isClientSide() && (launched || tickCount % 4 == 0) && level() instanceof ServerLevel serverLevel) {
             final var packet = new com.fullfud.fullfud.core.network.packet.Fp5GhostUpdatePacket(
                 getUUID(), getX(), getY(), getZ(), getYRot(), getXRot(), bodyRoll,
-                isOnLauncher(), launched, isBoosterActive());
+                isOnLauncher(), launched, isBoosterActive(), false);
             for (final ServerPlayer player : serverLevel.players()) {
                 if (player.distanceToSqr(this) <= 4096.0D * 4096.0D) {
                     com.fullfud.fullfud.core.network.FullfudNetwork.getChannel().send(
                         net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player), packet);
                 }
+            }
+        }
+    }
+
+    private void broadcastGhostRemoval(final ServerLevel serverLevel) {
+        final var packet = new com.fullfud.fullfud.core.network.packet.Fp5GhostUpdatePacket(
+            getUUID(), getX(), getY(), getZ(), getYRot(), getXRot(), bodyRoll,
+            isOnLauncher(), launched, isBoosterActive(), true);
+        for (final ServerPlayer player : serverLevel.players()) {
+            if (player.distanceToSqr(this) <= 4096.0D * 4096.0D) {
+                com.fullfud.fullfud.core.network.FullfudNetwork.getChannel().send(
+                    net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player), packet);
             }
         }
     }
@@ -435,7 +447,7 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
             this.lerpX = x;
             this.lerpY = y;
             this.lerpZ = z;
-            this.lerpSteps = Math.max(1, posRotationIncrements);
+            this.lerpSteps = 1;
         }
     }
 
@@ -486,6 +498,9 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
             ChunkLoadManager.releaseChunks(serverLevel, getId());
         }
         if (!level().isClientSide && reason.shouldDestroy() && dropItemOnRemove) {
+            if (level() instanceof ServerLevel serverLevel) {
+                broadcastGhostRemoval(serverLevel);
+            }
             final Fp5LauncherEntity launcher = resolveLauncher();
             if (launcher != null) {
                 launcher.onStoredFlamingoRemoved(this);
@@ -1232,6 +1247,9 @@ public class Fp5FlamingoEntity extends Entity implements GeoEntity {
         mountedLauncherId = -1;
         mountedLauncherUuid = null;
         setPos(impactPos.x, impactPos.y, impactPos.z);
+        if (level() instanceof ServerLevel serverLevel) {
+            broadcastGhostRemoval(serverLevel);
+        }
         spawnTntEffect(explicitNormal);
         discard();
     }
