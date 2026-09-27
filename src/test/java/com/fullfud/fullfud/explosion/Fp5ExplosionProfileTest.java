@@ -351,6 +351,45 @@ public class Fp5ExplosionProfileTest {
             "Unknown explosion types must safely use the legacy fallback");
     }
 
+    @Fp5Test(tier = 2, features = {"F11"}, description = "Grounded Flamingo blast has a larger soot plume and a brief warm flash")
+    public void testFabStyleBlastHierarchyAndParticleBudget() throws Exception {
+        final Method spawnMethod = DroneParticleManager.class.getDeclaredMethod(
+            "spawnLayeredExplosion", List.class,
+            double.class, double.class, double.class,
+            float.class, float.class, float.class,
+            byte.class, DroneParticleManager.ExplosionVisualProfile.class
+        );
+        spawnMethod.setAccessible(true);
+        final List<DroneParticleManager.ExplosionParticle> shahed = new ArrayList<>();
+        final List<DroneParticleManager.ExplosionParticle> flamingo = new ArrayList<>();
+        spawnMethod.invoke(null, shahed, 0.0D, 64.0D, 0.0D, 0.0F, 1.0F, 0.0F,
+            DroneExplosionPacket.MAT_STONE,
+            DroneParticleManager.resolveExplosionVisualProfile(DroneExplosionPacket.TYPE_SHAHED, 4.8F));
+        spawnMethod.invoke(null, flamingo, 0.0D, 64.0D, 0.0D, 0.0F, 1.0F, 0.0F,
+            DroneExplosionPacket.MAT_STONE,
+            DroneParticleManager.resolveExplosionVisualProfile(DroneExplosionPacket.TYPE_FLAMINGO, 8.0F));
+
+        final float shahedSmokeScale = shahed.stream()
+            .filter(p -> p.renderLayer == 3 && p.staticTexture != null)
+            .map(p -> p.scale).max(Float::compare).orElse(0.0F);
+        final float flamingoSmokeScale = flamingo.stream()
+            .filter(p -> p.renderLayer == 3 && p.staticTexture != null)
+            .map(p -> p.scale).max(Float::compare).orElse(0.0F);
+        Fp5Assertions.assertTrue(flamingoSmokeScale > shahedSmokeScale * 1.2F,
+            "Flamingo must produce a visibly larger smoke plume than Shahed");
+        Fp5Assertions.assertTrue(flamingo.size() < 1000,
+            "A single heavy impact must remain within the client particle budget");
+        for (final DroneParticleManager.ExplosionParticle particle : flamingo) {
+            if (particle.staticTexture != null && particle.staticTexture.getPath().contains("flash64")) {
+                Fp5Assertions.assertTrue(particle.maxAge <= 4,
+                    "The broad flash must end before the rising smoke dominates");
+                Fp5Assertions.assertTrue(particle.b < particle.r,
+                    "The initial flash should be warm rather than pure white");
+            }
+        }
+        VfxLightingRegistry.clear();
+    }
+
     @Fp5Test(tier = 2, features = {"F11"}, description = "Layered composition creates a surface halo but never ground rings for an airburst")
     public void testLayeredCompositionSurfaceAndAirburstSeparation() throws Exception {
         final Method spawnMethod = DroneParticleManager.class.getDeclaredMethod(

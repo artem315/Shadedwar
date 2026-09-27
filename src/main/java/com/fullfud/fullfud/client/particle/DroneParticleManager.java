@@ -503,10 +503,15 @@ public final class DroneParticleManager {
         int haloLifetimeTicks,
         float lightRadius,
         float lightIntensity,
-        float soundScale
+        float soundScale,
+        byte explosionType
     ) {
         public boolean heavy() {
             return visualScale >= 3.0F;
+        }
+
+        public boolean flamingo() {
+            return explosionType == DroneExplosionPacket.TYPE_FLAMINGO;
         }
     }
 
@@ -534,22 +539,22 @@ public final class DroneParticleManager {
             case DroneExplosionPacket.TYPE_FPV_STRIKE -> new ExplosionVisualProfile(
                 1.12F * powerFactor, 18, 32, 36, 20, 28,
                 18.0F * powerFactor, 13, 16.0F * powerFactor,
-                1.85F * powerFactor, 1.15F
+                1.85F * powerFactor, 1.15F, DroneExplosionPacket.TYPE_FPV_STRIKE
             );
             case DroneExplosionPacket.TYPE_SHAHED -> new ExplosionVisualProfile(
                 4.40F * powerFactor, 110, 145, 135, 90, 110,
                 58.0F * powerFactor, 24, 55.0F * powerFactor,
-                4.80F * powerFactor, 3.6F
+                4.80F * powerFactor, 3.6F, DroneExplosionPacket.TYPE_SHAHED
             );
             case DroneExplosionPacket.TYPE_FLAMINGO -> new ExplosionVisualProfile(
                 4.20F * powerFactor, 140, 190, 130, 64, 110,
                 73.33334F * powerFactor, 24, 56.14035F * powerFactor,
-                17.777779F * powerFactor, 4.5F
+                17.777779F * powerFactor, 4.5F, DroneExplosionPacket.TYPE_FLAMINGO
             );
             case DroneExplosionPacket.TYPE_FPV_STANDARD -> new ExplosionVisualProfile(
                 1.00F * powerFactor, 14, 24, 26, 16, 22,
                 14.0F * powerFactor, 12, 12.0F * powerFactor,
-                1.55F * powerFactor, 1.0F
+                1.55F * powerFactor, 1.0F, DroneExplosionPacket.TYPE_FPV_STANDARD
             );
             default -> null;
         };
@@ -665,7 +670,7 @@ public final class DroneParticleManager {
                 center.x + offset.x, center.y + offset.y, center.z + offset.z,
                 0.0D, 0.0D, 0.0D,
                 0.45F, diameter,
-                0.38F, 0.0F,
+                0.16F, 0.0F,
                 0.90F, 0.84F, 0.70F,
                 0.0F, 0.0F,
                 0, life,
@@ -686,7 +691,7 @@ public final class DroneParticleManager {
                 center.x + normal.x * 0.18D, center.y + normal.y * 0.18D, center.z + normal.z * 0.18D,
                 0.0D, 0.0D, 0.0D,
                 0.22F, diameter * 0.62F,
-                0.24F, 0.0F,
+                0.10F, 0.0F,
                 0.95F, 0.93F, 0.88F,
                 0.0F, 0.0F,
                 1, Math.max(5, life - 3),
@@ -725,8 +730,8 @@ public final class DroneParticleManager {
                 center.x, center.y, center.z,
                 0.0D, 0.0D, 0.0D,
                 0.35F, diameter,
-                0.34F, 0.0F,
-                0.88F, 0.88F, 0.85F,
+                0.16F, 0.0F,
+                0.82F, 0.76F, 0.68F,
                 0.0F, 0.0F,
                 0, life,
                 0.0F, 0.985F,
@@ -743,8 +748,8 @@ public final class DroneParticleManager {
                 center.x, center.y, center.z,
                 0.0D, 0.0D, 0.0D,
                 0.18F, diameter * 0.58F,
-                0.22F, 0.0F,
-                0.95F, 0.93F, 0.88F,
+                0.10F, 0.0F,
+                0.95F, 0.76F, 0.50F,
                 0.0F, 0.0F,
                 1, Math.max(5, life - 3),
                 0.0F, 0.97F,
@@ -767,7 +772,7 @@ public final class DroneParticleManager {
             center.x + normal.x * 0.32D, center.y + normal.y * 0.32D, center.z + normal.z * 0.32D,
             0.0D, 0.0D, 0.0D,
             0.28F, diameter * 0.76F,
-            0.14F, 0.0F,
+            0.08F, 0.0F,
             0.92F, 0.90F, 0.86F,
             0.0F, 0.0F,
             1, Math.max(5, life - 4),
@@ -798,11 +803,11 @@ public final class DroneParticleManager {
             final ExplosionParticle flareExpand = new ExplosionParticle(
                 center.x, center.y + 0.1D, center.z,
                 0.0D, 0.0D, 0.0D,
-                2.0F, 22.0F,
-                0.95F, 0.0F,
-                1.0F, 0.82F, 0.62F,
+                0.8F, profile.flamingo() ? 22.0F : 15.0F,
+                0.75F, 0.0F,
+                1.0F, 0.72F, 0.38F,
                 0.0F, 0.0F,
-                0, 7,
+                0, 4,
                 0.0F, 1.0F,
                 false, false,
                 ParticleOrientation.BILLBOARD, BlendMode.ADDITIVE,
@@ -816,11 +821,11 @@ public final class DroneParticleManager {
             final ExplosionParticle mainBang = new ExplosionParticle(
                 center.x, center.y + 0.2D, center.z,
                 0.0D, 0.04D, 0.0D,
-                10.0F, 0.8F,
-                1.0F, 0.0F,
-                1.0F, 0.78F, 0.55F,
+                profile.flamingo() ? 15.0F : 10.0F, 0.8F,
+                0.82F, 0.0F,
+                1.0F, 0.70F, 0.36F,
                 0.0F, 0.0F,
-                0, 12,
+                0, 9,
                 0.0F, 0.96F,
                 false, false,
                 ParticleOrientation.BILLBOARD, BlendMode.ADDITIVE,
@@ -834,11 +839,11 @@ public final class DroneParticleManager {
             final ExplosionParticle flareShrink = new ExplosionParticle(
                 center.x, center.y + 0.2D, center.z,
                 0.0D, 0.0D, 0.0D,
-                16.0F, 0.08F,
-                0.85F, 0.0F,
-                1.0F, 0.98F, 0.92F,
+                profile.flamingo() ? 15.0F : 10.0F, 0.08F,
+                0.58F, 0.0F,
+                1.0F, 0.82F, 0.52F,
                 0.0F, 0.0F,
-                0, 8,
+                0, 5,
                 0.0F, 1.0F,
                 false, false,
                 ParticleOrientation.BILLBOARD, BlendMode.ADDITIVE,
@@ -852,11 +857,11 @@ public final class DroneParticleManager {
             final ExplosionParticle flareLinger = new ExplosionParticle(
                 center.x, center.y + 0.1D, center.z,
                 0.0D, 0.0D, 0.0D,
-                5.0F, 0.15F,
-                0.08F, 0.001F,
-                0.92F, 0.90F, 0.86F,
+                3.0F, 0.15F,
+                0.06F, 0.001F,
+                0.92F, 0.68F, 0.38F,
                 0.0F, 0.0F,
-                0, 35,
+                0, 12,
                 0.0F, 1.0F,
                 false, false,
                 ParticleOrientation.BILLBOARD, BlendMode.ADDITIVE,
@@ -870,11 +875,11 @@ public final class DroneParticleManager {
                 final ExplosionParticle disc = new ExplosionParticle(
                     center.x, center.y + 0.05D, center.z,
                     0.0D, 0.0D, 0.0D,
-                    16.0F, 0.01F,
-                    0.70F, 0.0F,
-                    0.95F, 0.94F, 0.90F,
+                    profile.flamingo() ? 17.0F : 11.0F, 0.01F,
+                    0.32F, 0.0F,
+                    0.95F, 0.72F, 0.42F,
                     0.0F, 0.0F,
-                    0, 7,
+                    0, 4,
                     0.0F, 1.0F,
                     false, false,
                     ParticleOrientation.GROUND_ALIGNED, BlendMode.ADDITIVE,
@@ -888,11 +893,11 @@ public final class DroneParticleManager {
             final ExplosionParticle flashL = new ExplosionParticle(
                 center.x, center.y + 0.4D, center.z,
                 0.0D, 0.0D, 0.0D,
-                26.0F, 0.10F,
-                1.0F, 0.0F,
-                1.0F, 1.0F, 1.0F,
+                profile.flamingo() ? 18.0F : 12.0F, 0.10F,
+                0.26F, 0.0F,
+                1.0F, 0.78F, 0.46F,
                 0.0F, 0.0F,
-                0, 8,
+                0, 3,
                 0.0F, 1.0F,
                 false, false,
                 ParticleOrientation.BILLBOARD, BlendMode.ADDITIVE,
@@ -905,11 +910,11 @@ public final class DroneParticleManager {
             final ExplosionParticle flashM = new ExplosionParticle(
                 center.x, center.y + 0.4D, center.z,
                 0.0D, 0.0D, 0.0D,
-                18.0F, 0.10F,
-                1.0F, 0.0F,
-                1.0F, 1.0F, 1.0F,
+                profile.flamingo() ? 12.0F : 8.0F, 0.10F,
+                0.20F, 0.0F,
+                1.0F, 0.78F, 0.46F,
                 0.0F, 0.0F,
-                0, 6,
+                0, 3,
                 0.0F, 1.0F,
                 false, false,
                 ParticleOrientation.BILLBOARD, BlendMode.ADDITIVE,
@@ -922,11 +927,11 @@ public final class DroneParticleManager {
             final ExplosionParticle farFlash = new ExplosionParticle(
                 center.x, center.y + 0.6D, center.z,
                 0.0D, 0.0D, 0.0D,
-                32.0F, 6.0F,
-                0.40F, 0.01F,
-                1.0F, 1.0F, 1.0F,
+                profile.flamingo() ? 20.0F : 12.0F, 6.0F,
+                0.10F, 0.01F,
+                1.0F, 0.80F, 0.52F,
                 0.0F, 0.0F,
-                0, 16,
+                0, 4,
                 0.0F, 1.0F,
                 false, false,
                 ParticleOrientation.BILLBOARD, BlendMode.ADDITIVE,
@@ -936,8 +941,8 @@ public final class DroneParticleManager {
             farFlash.litFactor = 0.0F;
             appendParticle(particles, farFlash);
 
-            // Fast radiating vertical sparks (50 count)
-            for (int k = 0; k < 50; k++) {
+            // A few hot fragments escape the fireball without turning the blast into fireworks.
+            for (int k = 0; k < qualityCount(profile.flamingo() ? 22 : 14, density); k++) {
                 final double theta = RANDOM.nextDouble() * Math.PI * 2.0D;
                 final double spreadR = 0.2D + RANDOM.nextDouble() * 1.5D;
                 final double sx = Math.cos(theta) * spreadR;
@@ -1086,8 +1091,8 @@ public final class DroneParticleManager {
             final Vec3 velocity = profile.heavy()
                 ? new Vec3(dx * 0.45D, dy * 0.45D + 0.30D, dz * 0.45D).scale(speed).add(normal.scale(0.12D))
                 : new Vec3(dx, dy + 0.20D, dz).scale(speed).add(normal.scale(0.16D));
-            final float fireG = profile.heavy() ? (0.95F + RANDOM.nextFloat() * 0.05F) : (0.34F + RANDOM.nextFloat() * 0.46F);
-            final float fireB = profile.heavy() ? (0.88F + RANDOM.nextFloat() * 0.10F) : (0.025F + RANDOM.nextFloat() * 0.10F);
+            final float fireG = profile.heavy() ? (0.54F + RANDOM.nextFloat() * 0.24F) : (0.34F + RANDOM.nextFloat() * 0.46F);
+            final float fireB = profile.heavy() ? (0.12F + RANDOM.nextFloat() * 0.18F) : (0.025F + RANDOM.nextFloat() * 0.10F);
             final ExplosionParticle fire = new ExplosionParticle(
                 position.x, position.y, position.z,
                 velocity.x, velocity.y, velocity.z,
@@ -1113,7 +1118,7 @@ public final class DroneParticleManager {
             fire.litFactor = profile.heavy() ? 0.08F : 0.22F;
             // The fireball condenses: dying fire particles seed the soot column
             // that then rises as the mushroom cloud.
-            fire.emitsSmoke = true;
+            fire.emitsSmoke = !profile.heavy() || i % 4 == 0;
             appendParticle(particles, fire);
         }
 
@@ -1183,22 +1188,23 @@ public final class DroneParticleManager {
     ) {
         final int count = qualityCount(profile.smokeParticles(), density);
         final float scale = Math.min(4.8F, profile.visualScale());
+        final float plumeScale = profile.flamingo() ? 1.45F : 1.0F;
+        final int plumeLifetime = profile.flamingo() ? 105 : 0;
         // Mushroom/stem caps are grounded shapes: a heavy AIRBURST must use
         // the spherical cloud so it never draws a floating mushroom in the sky.
         final boolean heavyGrounded = profile.heavy() && !airburst;
 
         if (heavyGrounded) {
-            // Authentic FAB-500 4-tier smoke structure scaled up for 1-ton cruise missile:
-            // Tier 1: Billowing Mushroom Head (40% of particles)
+            // A low fireball lifts a narrow column; the cap spreads after the pressure wave.
             final int capCount = Math.round(count * 0.40F);
             for (int i = 0; i < capCount; i++) {
                 final double angle = RANDOM.nextDouble() * Math.PI * 2.0D;
-                final double radDist = (0.2D + RANDOM.nextDouble() * 1.1D);
-                final double height = 0.8D + RANDOM.nextDouble() * 2.2D;
+                final double radDist = (0.4D + RANDOM.nextDouble() * 1.8D) * plumeScale;
+                final double height = (2.0D + RANDOM.nextDouble() * 2.5D) * plumeScale;
                 final double cos = Math.cos(angle);
                 final double sin = Math.sin(angle);
-                final double radSpeed = (0.04D + RANDOM.nextDouble() * 0.14D);
-                final double rise = 0.58D + RANDOM.nextDouble() * 0.75D; // vy >= 0.45 satisfies high rise column test
+                final double radSpeed = (0.09D + RANDOM.nextDouble() * 0.16D) * plumeScale;
+                final double rise = (0.36D + RANDOM.nextDouble() * 0.36D) * plumeScale;
                 final double driftX = (RANDOM.nextDouble() - 0.5D) * 0.015D;
                 final double driftZ = (RANDOM.nextDouble() - 0.5D) * 0.015D;
                 final float[] col = FAB_SOOT_COLORS[RANDOM.nextInt(FAB_SOOT_COLORS.length)];
@@ -1208,13 +1214,13 @@ public final class DroneParticleManager {
                 final ExplosionParticle smoke = new ExplosionParticle(
                     center.x + cos * radDist, center.y + height, center.z + sin * radDist,
                     cos * radSpeed + driftX, rise, sin * radSpeed + driftZ,
-                    2.2F + RANDOM.nextFloat() * 0.8F,
-                    Math.min(13.0F, 7.0F + RANDOM.nextFloat() * 5.0F),
-                    0.75F + RANDOM.nextFloat() * 0.20F, 0.0F,
+                    (2.2F + RANDOM.nextFloat() * 0.8F) * plumeScale,
+                    (7.0F + RANDOM.nextFloat() * 5.0F) * plumeScale,
+                    0.58F + RANDOM.nextFloat() * 0.18F, 0.0F,
                     col[0], col[1], col[2],
                     RANDOM.nextFloat() * 6.28F, (RANDOM.nextFloat() - 0.5F) * 0.025F,
-                    0, 380 + RANDOM.nextInt(220),
-                    -0.0028F, 0.985F,
+                    0, 180 + plumeLifetime + RANDOM.nextInt(90),
+                    -0.0012F, 0.982F,
                     false, false,
                     ParticleOrientation.BILLBOARD, BlendMode.ALPHA,
                     tex, null, 1, 0.0F, 0.0F, 0.0F,
@@ -1229,28 +1235,28 @@ public final class DroneParticleManager {
                 appendParticle(particles, smoke);
             }
 
-            // Tier 2: Narrow Vertical Smoke Pillar / Stem (25% of particles)
+            // The stem rises faster than the cap and remains visibly narrower.
             final int stemCount = Math.round(count * 0.25F);
             for (int i = 0; i < stemCount; i++) {
                 final double angle = RANDOM.nextDouble() * Math.PI * 2.0D;
-                final double radDist = RANDOM.nextDouble() * 0.35D;
-                final double height = 0.2D + RANDOM.nextDouble() * 1.4D;
+                final double radDist = RANDOM.nextDouble() * 0.55D * plumeScale;
+                final double height = (0.2D + RANDOM.nextDouble() * 1.8D) * plumeScale;
                 final double cos = Math.cos(angle);
                 final double sin = Math.sin(angle);
-                final double radSpeed = (0.02D + RANDOM.nextDouble() * 0.05D);
-                final double rise = 0.72D + RANDOM.nextDouble() * 0.95D; // strong vertical suction
+                final double radSpeed = (0.03D + RANDOM.nextDouble() * 0.06D) * plumeScale;
+                final double rise = (0.48D + RANDOM.nextDouble() * 0.42D) * plumeScale;
                 final float[] col = FAB_SOOT_COLORS[RANDOM.nextInt(FAB_SOOT_COLORS.length)];
                 final ResourceLocation tex = TEX_BIG_SMOKE[RANDOM.nextInt(TEX_BIG_SMOKE.length)];
                 final ExplosionParticle stem = new ExplosionParticle(
                     center.x + cos * radDist, center.y + height, center.z + sin * radDist,
                     cos * radSpeed, rise, sin * radSpeed,
-                    1.6F + RANDOM.nextFloat() * 0.6F,
-                    Math.min(8.0F, 4.0F + RANDOM.nextFloat() * 3.5F),
-                    0.80F + RANDOM.nextFloat() * 0.18F, 0.0F,
+                    (1.6F + RANDOM.nextFloat() * 0.6F) * plumeScale,
+                    (4.0F + RANDOM.nextFloat() * 3.5F) * plumeScale,
+                    0.64F + RANDOM.nextFloat() * 0.18F, 0.0F,
                     col[0], col[1], col[2],
                     RANDOM.nextFloat() * 6.28F, (RANDOM.nextFloat() - 0.5F) * 0.02F,
-                    0, 420 + RANDOM.nextInt(220),
-                    -0.0035F, 0.988F,
+                    0, 210 + plumeLifetime + RANDOM.nextInt(110),
+                    -0.0014F, 0.983F,
                     false, false,
                     ParticleOrientation.BILLBOARD, BlendMode.ALPHA,
                     tex, null, 1, 0.0F, 0.0F, 0.0F,
@@ -1265,15 +1271,15 @@ public final class DroneParticleManager {
                 appendParticle(particles, stem);
             }
 
-            // Tier 3: Ground Shockwave Smoke Disc (35% of particles)
+            // A fast, low rolling dust front reads as displaced ground material.
             final int discCount = Math.round(count * 0.35F);
             for (int i = 0; i < discCount; i++) {
                 final double angle = RANDOM.nextDouble() * Math.PI * 2.0D;
-                final double radDist = (0.2D + RANDOM.nextDouble() * 1.8D);
+                final double radDist = (0.2D + RANDOM.nextDouble() * 1.8D) * plumeScale;
                 final double height = 0.06D + RANDOM.nextDouble() * 0.18D;
                 final double cos = Math.cos(angle);
                 final double sin = Math.sin(angle);
-                final double radSpeed = (0.20D + RANDOM.nextDouble() * 0.45D);
+                final double radSpeed = (0.34D + RANDOM.nextDouble() * 0.44D) * plumeScale;
                 final double rise = 0.02D + RANDOM.nextDouble() * 0.08D;
                 final float[] col = FAB_SOOT_COLORS[RANDOM.nextInt(FAB_SOOT_COLORS.length)];
                 final ResourceLocation tex = (i % 2 == 0)
@@ -1282,13 +1288,13 @@ public final class DroneParticleManager {
                 final ExplosionParticle groundRing = new ExplosionParticle(
                     center.x + cos * radDist, center.y + height, center.z + sin * radDist,
                     cos * radSpeed, rise, sin * radSpeed,
-                    2.0F + RANDOM.nextFloat() * 0.8F,
-                    Math.min(8.5F, 4.5F + RANDOM.nextFloat() * 3.5F),
-                    0.60F + RANDOM.nextFloat() * 0.25F, 0.0F,
+                    (2.0F + RANDOM.nextFloat() * 0.8F) * plumeScale,
+                    (4.5F + RANDOM.nextFloat() * 3.5F) * plumeScale,
+                    0.45F + RANDOM.nextFloat() * 0.20F, 0.0F,
                     col[0], col[1], col[2],
                     RANDOM.nextFloat() * 6.28F, (RANDOM.nextFloat() - 0.5F) * 0.03F,
-                    0, 260 + RANDOM.nextInt(150),
-                    -0.0015F, 0.982F,
+                    0, 105 + plumeLifetime / 2 + RANDOM.nextInt(65),
+                    -0.0008F, 0.973F,
                     false, false,
                     ParticleOrientation.BILLBOARD, BlendMode.ALPHA,
                     tex, null, 1, 0.0F, 0.0F, 0.0F,
@@ -1300,8 +1306,8 @@ public final class DroneParticleManager {
                 appendParticle(particles, groundRing);
             }
 
-            // Tier 4: Dense Crater Smolder (10 soot clusters at crater center)
-            for (int k = 0; k < 10; k++) {
+            // Crater smoke stays behind when the expanding dust front has passed.
+            for (int k = 0; k < (profile.flamingo() ? 14 : 8); k++) {
                 final double angle = RANDOM.nextDouble() * Math.PI * 2.0D;
                 final double dist = RANDOM.nextDouble() * 0.9D;
                 final float[] col = FAB_SOOT_COLORS[8]; // dark soot 2e2a28
@@ -1314,7 +1320,7 @@ public final class DroneParticleManager {
                     0.85F, 0.001F,
                     col[0], col[1], col[2],
                     RANDOM.nextFloat() * 6.28F, (RANDOM.nextFloat() - 0.5F) * 0.02F,
-                    0, 450 + RANDOM.nextInt(250),
+                    0, 180 + plumeLifetime + RANDOM.nextInt(90),
                     -0.0012F, 0.988F,
                     false, false,
                     ParticleOrientation.BILLBOARD, BlendMode.ALPHA,
@@ -1410,28 +1416,29 @@ public final class DroneParticleManager {
         final int count = qualityCount(profile.dustParticles(), density);
         final MaterialPalette palette = paletteFor(materialType);
         final float scale = Math.min(4.0F, profile.visualScale());
+        final float blastScale = profile.flamingo() ? 1.45F : 1.0F;
 
         if (profile.heavy()) {
             final int heavyCount = Math.max(70, qualityCount(profile.dustParticles(), density));
             for (int i = 0; i < heavyCount; i++) {
                 final double angle = RANDOM.nextDouble() * Math.PI * 2.0D;
-                final double dist = (0.2D + RANDOM.nextDouble() * 1.2D);
+                final double dist = (0.2D + RANDOM.nextDouble() * 1.2D) * blastScale;
                 final double cos = Math.cos(angle);
                 final double sin = Math.sin(angle);
-                final double speed = (0.30D + RANDOM.nextDouble() * 0.55D);
+                final double speed = (0.34D + RANDOM.nextDouble() * 0.50D) * blastScale;
                 final ResourceLocation tex = (i % 2 == 0)
                     ? TEX_BIG_SMOKE[RANDOM.nextInt(TEX_BIG_SMOKE.length)]
                     : TEX_SMOKE_CLUSTERS[RANDOM.nextInt(TEX_SMOKE_CLUSTERS.length)];
                 final ExplosionParticle dust = new ExplosionParticle(
                     center.x + cos * dist, center.y + 0.08D + RANDOM.nextDouble() * 0.20D, center.z + sin * dist,
                     cos * speed, 0.05D + RANDOM.nextDouble() * 0.12D, sin * speed,
-                    1.4F + RANDOM.nextFloat() * 0.6F,
-                    Math.min(6.5F, 3.5F + RANDOM.nextFloat() * 2.5F),
-                    0.55F + RANDOM.nextFloat() * 0.25F, 0.0F,
+                    (1.4F + RANDOM.nextFloat() * 0.6F) * blastScale,
+                    (3.5F + RANDOM.nextFloat() * 2.5F) * blastScale,
+                    0.42F + RANDOM.nextFloat() * 0.18F, 0.0F,
                     palette.dustRed(), palette.dustGreen(), palette.dustBlue(),
                     RANDOM.nextFloat() * 6.28F, (RANDOM.nextFloat() - 0.5F) * 0.03F,
-                    0, 220 + RANDOM.nextInt(120),
-                    -0.0018F, 0.978F,
+                    0, (profile.flamingo() ? 145 : 90) + RANDOM.nextInt(70),
+                    -0.0008F, 0.973F,
                     false, false,
                     ParticleOrientation.BILLBOARD, BlendMode.ALPHA,
                     tex, null, 1, 0.0F, 0.0F, 0.0F,
@@ -1493,8 +1500,8 @@ public final class DroneParticleManager {
             final int heavyCount = Math.max(45, qualityCount(profile.debrisParticles(), density));
             for (int i = 0; i < heavyCount; i++) {
                 final double angle = RANDOM.nextDouble() * Math.PI * 2.0D;
-                final double speed = 0.20D + RANDOM.nextDouble() * 0.60D;
-                final double upVel = 0.80D + RANDOM.nextDouble() * 1.40D;
+                final double speed = (0.20D + RANDOM.nextDouble() * 0.60D) * (profile.flamingo() ? 1.35D : 1.0D);
+                final double upVel = (0.80D + RANDOM.nextDouble() * 1.40D) * (profile.flamingo() ? 1.25D : 1.0D);
                 final Vec3 velocity = new Vec3(
                     Math.cos(angle) * speed,
                     upVel,
@@ -1592,18 +1599,18 @@ public final class DroneParticleManager {
                 dx /= len;
                 dy /= len;
                 dz /= len;
-                final double horizSpeed = (0.20D + RANDOM.nextDouble() * 0.70D);
-                final double vertSpeed = (1.20D + RANDOM.nextDouble() * 1.50D);
+                final double horizSpeed = (0.20D + RANDOM.nextDouble() * 0.70D) * (profile.flamingo() ? 1.35D : 1.0D);
+                final double vertSpeed = (1.20D + RANDOM.nextDouble() * 1.50D) * (profile.flamingo() ? 1.25D : 1.0D);
                 final ExplosionParticle spark = new ExplosionParticle(
                     center.x + normal.x * 0.15D, center.y + normal.y * 0.15D + 0.12D, center.z + normal.z * 0.15D,
                     dx * horizSpeed, dy * 0.40D + vertSpeed, dz * horizSpeed,
                     0.22F + RANDOM.nextFloat() * 0.25F, 0.04F,
                     1.0F, 0.0F,
-                    1.0F, 0.98F, 0.92F,
+                    1.0F, 0.72F, 0.38F,
                     0.0F, 0.0F,
                     0, 40 + RANDOM.nextInt(30),
                     0.040F, 0.955F,
-                    true, true,
+                    true, i % 5 == 0,
                     ParticleOrientation.MOTION, BlendMode.ADDITIVE,
                     null, TEX_SPARK_CLUSTERS, 2, 0.0F, 0.0F, 0.0F,
                     5
@@ -1617,8 +1624,8 @@ public final class DroneParticleManager {
                 appendParticle(particles, spark);
             }
 
-            // 8 Slow-burning ember clusters (alt0..3)
-            for (int k = 0; k < 8; k++) {
+            // A few slower embers remain after the initial burst.
+            for (int k = 0; k < (profile.flamingo() ? 12 : 8); k++) {
                 final double angle = RANDOM.nextDouble() * Math.PI * 2.0D;
                 final double sp = 0.10D + RANDOM.nextDouble() * 0.30D;
                 final ResourceLocation tex = TEX_ALT_SMOKE[RANDOM.nextInt(TEX_ALT_SMOKE.length)];
@@ -1742,11 +1749,11 @@ public final class DroneParticleManager {
     ) {
         final Vec3 lightPosition = center.add(normal.scale(0.40D)).add(0.0D, 0.65D, 0.0D);
         final boolean water = materialType == DroneExplosionPacket.MAT_WATER;
-        final float coreRed = water ? 1.45F : (profile.heavy() ? 3.60F : 5.10F);
-        final float coreGreen = water ? 2.05F : (profile.heavy() ? 3.50F : 1.25F);
-        final float coreBlue = water ? 2.65F : (profile.heavy() ? 3.20F : 0.20F);
-        final int coreTicks = Math.max(10, Math.round(6.0F + profile.visualScale() * 2.8F));
-        final int afterglowTicks = Math.max(30, Math.round(32.0F + profile.visualScale() * 7.0F));
+        final float coreRed = water ? 1.45F : (profile.heavy() ? 3.40F : 5.10F);
+        final float coreGreen = water ? 2.05F : (profile.heavy() ? 1.75F : 1.25F);
+        final float coreBlue = water ? 2.65F : (profile.heavy() ? 0.52F : 0.20F);
+        final int coreTicks = profile.heavy() ? (profile.flamingo() ? 8 : 6) : 10;
+        final int afterglowTicks = profile.heavy() ? (profile.flamingo() ? 44 : 30) : 40;
 
         // Fireball core: the primary explosion light.  Dynamic envelope means
         // this genuinely brightens the terrain and nearby smoke for the whole
@@ -1765,10 +1772,10 @@ public final class DroneParticleManager {
         // Cool afterglow: keeps the crater and smoke lit while everything cools down
         VfxLightingRegistry.addTransientLight(
             lightPosition,
-            water ? 0.46F : (profile.heavy() ? 0.85F : 1.85F),
-            water ? 0.72F : (profile.heavy() ? 0.82F : 0.40F),
-            water ? 1.05F : (profile.heavy() ? 0.78F : 0.075F),
-            profile.lightIntensity() * 0.36F,
+            water ? 0.46F : (profile.heavy() ? 0.82F : 1.85F),
+            water ? 0.72F : (profile.heavy() ? 0.42F : 0.40F),
+            water ? 1.05F : (profile.heavy() ? 0.17F : 0.075F),
+            profile.lightIntensity() * (profile.heavy() ? 0.17F : 0.36F),
             profile.lightRadius() * 0.82F,
             afterglowTicks,
             true
@@ -1779,10 +1786,10 @@ public final class DroneParticleManager {
         final double columnHeight = Math.min(22.0D, profile.visualScale() * 2.8D);
         VfxLightingRegistry.addTransientLight(
             center.add(0.0D, columnHeight, 0.0D),
-            water ? 0.36F : (profile.heavy() ? 0.60F : 1.30F),
-            water ? 0.55F : (profile.heavy() ? 0.58F : 0.34F),
-            water ? 0.82F : (profile.heavy() ? 0.55F : 0.09F),
-            profile.lightIntensity() * 0.46F,
+            water ? 0.36F : (profile.heavy() ? 0.46F : 1.30F),
+            water ? 0.55F : (profile.heavy() ? 0.30F : 0.34F),
+            water ? 0.82F : (profile.heavy() ? 0.18F : 0.09F),
+            profile.lightIntensity() * (profile.heavy() ? 0.18F : 0.46F),
             profile.lightRadius() * 1.35F,
             afterglowTicks,
             false
