@@ -242,6 +242,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
     private UUID mountedLauncherUuid;
 
     private int lerpSteps;
+    private int clientPredictionTicks = 2;
     private double xO;
     private double yO;
     private double zO;
@@ -504,7 +505,8 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         this.xO = x;
         this.yO = y;
         this.zO = z;
-        this.lerpSteps = 10;
+        this.lerpSteps = 1;
+        this.clientPredictionTicks = 0;
     }
 
     public float getVisualRoll(float partialTick) {
@@ -525,6 +527,13 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
             syncPacketPositionCodec(getX(), getY(), getZ());
         }
         if (lerpSteps <= 0) {
+            if (!isOnLauncher() && clientPredictionTicks < 2) {
+                final Vec3 motion = getDeltaMovement();
+                if (motion.lengthSqr() > 1.0E-6D && motion.lengthSqr() < 100.0D) {
+                    setPos(getX() + motion.x, getY() + motion.y, getZ() + motion.z);
+                }
+                clientPredictionTicks++;
+            }
             return;
         }
 
@@ -1546,7 +1555,7 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
                 }
             }
             if (level() instanceof ServerLevel serverLevel) {
-                if (reason.shouldDestroy()) {
+                if (reason.shouldDestroy() && !detonating) {
                     broadcastGhostRemoval(serverLevel);
                 }
                 ShahedLinkData.get(serverLevel).unlink(getUUID());
@@ -1709,21 +1718,21 @@ public class ShahedDroneEntity extends Entity implements GeoEntity {
         setPos(impactOrigin.x, impactOrigin.y, impactOrigin.z);
         final Vec3 explosionDirection = resolveExplosionDirection();
         final ServerPlayer controller = getControllingPlayer();
+        if (!(level() instanceof ServerLevel serverLevel)) {
+            discard();
+            return;
+        }
+        broadcastGhostRemoval(serverLevel);
+        final DroneExplosionEffects.ImpactPresentation presentation =
+            DroneExplosionEffects.presentShahedExplosion(serverLevel, this, controller, explosionDirection);
         if (controller != null) {
             forceReturnCamera(controller);
             endRemoteControl(controller);
         } else {
             endRemoteControl(null);
         }
-        spawnTntEffect(controller, explosionDirection);
+        DroneExplosionEffects.finishShahedExplosion(serverLevel, this, controller, explosionDirection, presentation);
         discard();
-    }
-
-    private void spawnTntEffect(@javax.annotation.Nullable final ServerPlayer controller, @javax.annotation.Nullable final Vec3 explosionDirection) {
-        if (!(level() instanceof ServerLevel serverLevel)) {
-            return;
-        }
-        DroneExplosionEffects.afterShahedExplosion(serverLevel, this, controller, explosionDirection);
     }
 
     private Vec3 resolveExplosionDirection() {

@@ -172,6 +172,9 @@ public final class DroneParticleManager {
         final float power = Float.isFinite(packet.power()) ? Math.max(1.0F, packet.power()) : 1.0F;
         final List<ExplosionParticle> spawnList = new ArrayList<>(280);
         final ExplosionVisualProfile visualProfile = resolveExplosionVisualProfile(expType, power);
+        if (visualProfile != null) {
+            playExplosionSounds(minecraft, x, y, z, matType, visualProfile.soundScale());
+        }
         if (visualProfile != null && spawnLayeredExplosion(
             spawnList,
             x, y, z,
@@ -180,7 +183,6 @@ public final class DroneParticleManager {
             visualProfile
         )) {
             enqueueParticles(spawnList);
-            playExplosionSounds(minecraft, x, y, z, matType, visualProfile.soundScale());
             return;
         }
 

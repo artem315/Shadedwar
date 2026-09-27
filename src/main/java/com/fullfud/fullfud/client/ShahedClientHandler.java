@@ -96,7 +96,6 @@ public final class ShahedClientHandler {
     private static final Map<UUID, GhostState> GHOST_STATES = new HashMap<>();
     private static final Map<UUID, ShahedDroneEntity> GHOST_ENTITIES = new HashMap<>();
     private static final Map<UUID, Vec3> GHOST_NOZZLE_ANCHORS = new HashMap<>();
-    private static final int GHOST_INTERPOLATION_MAX_STEPS = 10;
     private static boolean localPlayerStateCaptured;
     private static boolean localPlayerSilent;
     private static float monitorCameraShakePitch;
@@ -760,6 +759,7 @@ public final class ShahedClientHandler {
         private boolean isJet;
         private long lastUpdateTick;
         private int interpolationSteps;
+        private int predictionTicks;
 
         private static GhostState create(final ShahedGhostUpdatePacket packet, final long nowTick) {
             final GhostState state = new GhostState();
@@ -814,7 +814,8 @@ public final class ShahedClientHandler {
             colorId = packet.colorId();
             onLauncher = packet.onLauncher();
             isJet = packet.isJet();
-            interpolationSteps = Mth.clamp((int) Math.max(1L, nowTick - lastUpdateTick), 1, GHOST_INTERPOLATION_MAX_STEPS);
+            interpolationSteps = 1;
+            predictionTicks = 0;
             lastUpdateTick = nowTick;
         }
 
@@ -842,15 +843,21 @@ public final class ShahedClientHandler {
                 renderVelocityX = targetVelocityX;
                 renderVelocityY = targetVelocityY;
                 renderVelocityZ = targetVelocityZ;
+                if (predictionTicks < 2 && !onLauncher) {
+                    renderX += renderVelocityX;
+                    renderY += renderVelocityY;
+                    renderZ += renderVelocityZ;
+                    predictionTicks++;
+                }
             }
 
             final float diffYaw = Mth.wrapDegrees(targetYaw - renderYaw);
             final float diffPitch = Mth.wrapDegrees(targetPitch - renderPitch);
             final float diffRoll = Mth.wrapDegrees(targetRoll - renderRoll);
-            renderYaw = Mth.wrapDegrees(renderYaw + 0.1F * diffYaw);
-            renderPitch = Mth.clamp(renderPitch + 0.1F * diffPitch, -90.0F, 90.0F);
-            renderRoll = Mth.wrapDegrees(renderRoll + 0.1F * diffRoll);
-            renderThrust = Mth.lerp(0.1F, renderThrust, targetThrust);
+            renderYaw = Mth.wrapDegrees(renderYaw + 0.55F * diffYaw);
+            renderPitch = Mth.clamp(renderPitch + 0.55F * diffPitch, -90.0F, 90.0F);
+            renderRoll = Mth.wrapDegrees(renderRoll + 0.55F * diffRoll);
+            renderThrust = Mth.lerp(0.55F, renderThrust, targetThrust);
         }
 
         private double x(final float partialTick) {

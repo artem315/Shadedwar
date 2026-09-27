@@ -83,6 +83,27 @@ public final class DroneExplosionEffects {
         applyExplosionEffects(level, source, attacker, SHAHED_PROFILE, facingDirection);
     }
 
+    public static ImpactPresentation presentShahedExplosion(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        @Nullable final Vec3 facingDirection
+    ) {
+        return presentExplosionEffects(level, source, attacker, SHAHED_PROFILE, facingDirection, null);
+    }
+
+    public static void finishShahedExplosion(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        @Nullable final Vec3 facingDirection,
+        final ImpactPresentation presentation
+    ) {
+        applyExplosionDamage(level, source, attacker, presentation, SHAHED_PROFILE, facingDirection);
+    }
+
+    public record ImpactPresentation(Vec3 origin, Vec3 normal) { }
+
     public static void afterFlamingoExplosion(
         final ServerLevel level,
         final Entity source,
@@ -152,6 +173,19 @@ public final class DroneExplosionEffects {
         @Nullable final Vec3 impactDirection,
         @Nullable final Vec3 explicitNormal
     ) {
+        final ImpactPresentation presentation = presentExplosionEffects(
+            level, source, attacker, profile, impactDirection, explicitNormal);
+        applyExplosionDamage(level, source, attacker, presentation, profile, impactDirection);
+    }
+
+    private static ImpactPresentation presentExplosionEffects(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        final BlastProfile profile,
+        @Nullable final Vec3 impactDirection,
+        @Nullable final Vec3 explicitNormal
+    ) {
         final Vec3 origin = source.position();
         final Vec3 normal = explicitNormal != null
             ? (explicitNormal.lengthSqr() > 1.0E-4D ? explicitNormal.normalize() : Vec3.ZERO)
@@ -190,9 +224,20 @@ public final class DroneExplosionEffects {
         }
 
         playLayeredDistanceSounds(level, origin);
-        applyWarbornBlastDamage(level, source, attacker, origin, normal, profile);
-        applySuperbWarfareExplosionDamage(level, source, attacker, origin, profile);
-        spawnShrapnel(level, source, attacker, origin, profile, impactDirection);
+        return new ImpactPresentation(origin, normal);
+    }
+
+    private static void applyExplosionDamage(
+        final ServerLevel level,
+        final Entity source,
+        @Nullable final LivingEntity attacker,
+        final ImpactPresentation presentation,
+        final BlastProfile profile,
+        @Nullable final Vec3 impactDirection
+    ) {
+        applyWarbornBlastDamage(level, source, attacker, presentation.origin(), presentation.normal(), profile);
+        applySuperbWarfareExplosionDamage(level, source, attacker, presentation.origin(), profile);
+        spawnShrapnel(level, source, attacker, presentation.origin(), profile, impactDirection);
     }
 
     public static byte resolveMaterialType(final ServerLevel level, final Vec3 origin) {
